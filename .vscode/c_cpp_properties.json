@@ -1,0 +1,21 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "",
+        "limitSymbolsToIncludedHeaders": true
+      },
+      "includePath": [
+        "/opt/ros/noetic/include/**",
+        "/usr/include/**",
+        "/home/hxt/Desktop/hxy-rotation/devel/include",
+        "/home/hxt/Desktop/hxy-rotation/src/rotation_estimator/include",
+        "/home/hxt/Desktop/hxy-rotation/src/event_publisher/include",
+        "/home/hxt/Desktop/hxy-rotation/src/event_bundler/include",
+        
+      ],
+      "name": "ROS"
+    }
+  ],
+  "version": 4
+}
