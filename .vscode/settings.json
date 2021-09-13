@@ -56,6 +56,23 @@
         "fstream": "cpp",
         "shared_mutex": "cpp",
         "stop_token": "cpp",
-        "complex": "cpp"
+        "complex": "cpp",
+        "chrono": "cpp",
+        "bitset": "cpp",
+        "hash_map": "cpp",
+        "hash_set": "cpp",
+        "valarray": "cpp",
+        "condition_variable": "cpp",
+        "deque": "cpp",
+        "core": "cpp",
+        "strstream": "cpp",
+        "cstdarg": "cpp",
+        "ctime": "cpp",
+        "cwctype": "cpp",
+        "mutex": "cpp",
+        "ratio": "cpp",
+        "thread": "cpp",
+        "typeindex": "cpp",
+        "variant": "cpp"
     }
 }

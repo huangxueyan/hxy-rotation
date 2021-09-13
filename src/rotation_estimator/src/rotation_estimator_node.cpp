@@ -7,16 +7,14 @@
 // ros 
 #include <ros/ros.h>
 #include "callbacks.hpp"
-
+#include "system.hpp"
 
 
 
 using namespace std; 
 
 
-// callback function 
-
-
+// rosbag play -r 0.1 ~/Documents/rosbag/Mono-rosbag/slider_depth.bag
 
 int main(int argc, char** argv)
 {
@@ -26,17 +24,23 @@ int main(int argc, char** argv)
 
     ros::NodeHandle nh("~");
 
-    string yaml; 
+    string yaml;  // system configration 
     nh.param<string>("yaml", yaml, "");
 
+    System sys(yaml);
 
-    ImageGrabber imageGrabber; 
-    ros::Subscriber image_sub = nh.subscribe("/raw_image", 10, &ImageGrabber::GrabImage, &imageGrabber);
+    // ImageGrabber imageGrabber(&sys); 
+    // ros::Subscriber image_sub = nh.subscribe("/dvs/image_raw", 10, &ImageGrabber::GrabImage, &imageGrabber);
+    
+    EventGrabber eventGrabber(&sys);
+    ros::Subscriber event_sub = nh.subscribe("/dvs/events", 10, &EventGrabber::GrabEvent, &eventGrabber);
 
+    PoseGrabber poseGrabber(&sys);
+    ros::Subscriber pose_sub = nh.subscribe("/optitrack/davis", 100, &PoseGrabber::GrabPose, &poseGrabber);
 
-    ros::spin();  // wait for callbacks 
-
+    ros::spin();  // exec for callbacks 
 
     cout << "shutdown rotation estimator" << endl;
     return 0;
 }
+

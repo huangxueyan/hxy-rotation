@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 project(rotation_estimator)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++11 -mtune=native)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -17,6 +17,9 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   dvs_msgs
 )
+
+find_package(Sophus REQUIRED )
+
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -121,8 +124,9 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-include
-  ${catkin_INCLUDE_DIRS}
+    include
+    ${catkin_INCLUDE_DIRS}
+    ${Sophus_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -138,7 +142,13 @@ include
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}_node src/rotation_estimator_node.cpp src/callbacks.cpp)
+add_executable(${PROJECT_NAME}_node 
+        src/rotation_estimator_node.cpp 
+        src/callbacks.cpp
+        src/database.cpp
+        src/system.cpp
+        src/numerics.cpp
+        src/system_estimate.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -153,6 +163,9 @@ add_executable(${PROJECT_NAME}_node src/rotation_estimator_node.cpp src/callback
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
     ${catkin_LIBRARIES}
+    ${OpenCV_LIBS}
+    ${Eigen3_LIBS}
+    ${Sophus_LIBRARIES} 
 )
 
 #############

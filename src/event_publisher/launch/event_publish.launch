@@ -2,7 +2,7 @@
     <node name="event_publisher" pkg="event_publisher" type="event_publisher_node" output="screen">
 
 
-        <param name="event_dir" type="string" value="/home/hxt/Desktop/hxy-rotation/date" />
+        <param name="event_dir" type="string" value="/home/hxt/Desktop/hxy-rotation/data" />
         <param name="yaml" type="string" value="$(find event_publisher)/config/config.yaml" />
         <param name="loop" type="bool" value="false" />
         

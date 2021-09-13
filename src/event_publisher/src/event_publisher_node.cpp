@@ -61,12 +61,13 @@ int main(int argc, char** argv)
         sensor_msgs::ImagePtr msg = cv_image.toImageMsg();
         // raw_image.publish(msg);
 
+
+        // dvs_msgs::EventArrayPtr evmsg = dvs_msgs::EventArrayPtr(new dvs_msgs::EventArray());;
+        // dvs_msgs::Event temp_ev;
+        // evmsg->events.push_back(temp_ev);
+        // event_array_pub.publish(evmsg);
+
         event_reader.publish();
-
-
-        cout << "sending event sessage " << cv_image.image.cols 
-            << cv_image.image.rows << cv_image.image.channels()<< endl;
-
         loop_rate.sleep();
     }
 
