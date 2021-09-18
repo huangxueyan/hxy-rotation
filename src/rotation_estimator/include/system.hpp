@@ -45,15 +45,20 @@ public:
     void pushimageData(ImageData& imageData); 
     void pushPoseData(PoseData& poseData);
 
+    Eigen::Matrix3d get_local_rotation_b2f(); 
+    Eigen::Matrix3d get_global_rotation_b2f(size_t idx_t1, size_t idx_t2);
+
+
 // imgproc
     void undistortEvents();
-    void getWarpedEventImage(const Eigen::Vector3f & temp_ang_vel,
-        const PlotOption& option = PlotOption::SIGNED_EVNET_IMAGE_COLOR); 
-    void getWarpedEventPoints(const Eigen::Vector3f & cur_ang_vel, 
-        const Eigen::Vector3f& cur_ang_pos=Eigen::Vector3f::Zero());
-    void getImageFromBundle(EventBundle& eventBundle, cv::Mat& image,
-        const PlotOption& option = PlotOption::SIGNED_EVNET_IMAGE_COLOR);
+    void getWarpedEventImage(const Eigen::Vector3d & temp_ang_vel,
+        const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR); 
+    void getWarpedEventPoints(const EventBundle& eventIn, EventBundle& eventOut,
+        const Eigen::Vector3d& cur_ang_vel, const Eigen::Vector3d& cur_ang_pos=Eigen::Vector3d::Zero());
+    cv::Mat getImageFromBundle(EventBundle& eventBundle,
+        const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR, bool is_mapping=false);
 
+    void getMapImage(); 
 // optimize
 
 // visualize 
@@ -67,8 +72,8 @@ private:
 
 // motion 
     vector<double> vec_curr_time;
-    vector<Eigen::Vector3f> vec_angular_velocity;
-    vector<Eigen::Vector3f> vec_angular_position;
+    vector<Eigen::Vector3d> vec_angular_velocity;
+    vector<Eigen::Vector3d> vec_angular_position;
 
 
 // optimization 
@@ -81,29 +86,34 @@ private:
     ImageData curr_imageData; 
 
     // image output 
-    cv::Mat curr_raw_image, curr_undis_image, 
-            curr_event_image, curr_undis_event_image, curr_warpped_event_image, 
-            curr_map_image;
+    cv::Mat curr_raw_image,             // grey image from ros      
+            curr_undis_image,           // undistort grey image  
+            curr_event_image,           // current blur event image 
+            curr_undis_event_image,     // current undistorted event image 
+            curr_warpped_event_image,   // current sharp local event image 
+            curr_map_image;             // global image at t_curr view
 
 // undistor 
     cv::Mat undist_mesh_x, undist_mesh_y;  
 
 // event data
-    EventBundle  eventBundle;           // local events 
-    EventBundle  event_undis_Bundle;    // local events 
-    EventBundle  event_warpped_Bundle;    // local events 
+    EventBundle  eventBundle;             // current blur local events 
+    EventBundle  event_undis_Bundle;      // current undistort local events 
+    EventBundle  event_warpped_Bundle;    // current sharp local events 
+    EventBundle  event_Map_Bundle;        // current sharp local events the that warp to t0. 
     
-    vector<EventData> vec_eventData; 
-    // EventBundle eventBundle;  ordered event data, not like ros msg 
+// map 3d 
+    vector<EventBundle> vec_Bundle_Maps;  // all the eventbundles that warpped to t0.  
 
-// event bundle 
+
+// event bundle, how many msgs to build a bundle 
     double delta_time = 0.01;       // 0.01 seconds
     int max_store_count = int(1e5); // max local event nums
 
 
 // pose 
     vector<PoseData> vec_gt_poseData; 
-    Eigen::Vector3f gt_angular_velocity; 
+    Eigen::Vector3d gt_angular_velocity; 
 
 // output 
     fstream gt_theta_file, gt_velocity_file; 

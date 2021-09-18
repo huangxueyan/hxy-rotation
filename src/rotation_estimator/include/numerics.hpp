@@ -7,37 +7,16 @@
 
 #include <sophus/so3.hpp>
 
-/**
-* \brief from 3 theta to 3x3 matrix asymmetrix matrix.
-* \param x rpy rotation angle in rad format.
-*/
-Eigen::Matrix3f hat(const Eigen::Vector3f &x); 
-
-Eigen::Matrix3f unhat(const Eigen::Matrix3f &x); 
-
-
-/**
-* \brief from 3 theta to rotation matrix.
-* \param rpy rotation angle in rad format. .
-*/
-Eigen::Matrix3f SO3(const Eigen::Vector3f &x); 
-
-
-/**
-* \brief from 3 theta to rotation matrix.
-* \param rpy rotation angle in rad format. .
-*/
-Eigen::Matrix3f SO3add(const Eigen::Vector3f &x, const Eigen::Vector3f &y); 
-
-
+Eigen::Matrix3d hat(const Eigen::Vector3d &x); 
+Eigen::Vector3d unhat(const Eigen::Matrix3d &x); 
+Eigen::Matrix3d SO3(const Eigen::Vector3d &x); 
+Eigen::Vector3d InvSO3(const Eigen::Matrix3d &x_hat);
+Eigen::Matrix3d SO3add(const Eigen::Vector3d &x, const Eigen::Vector3d &y); 
 
 
 struct MyEulerAngles {
-    double roll, pitch, yaw;
-};
+    double roll, pitch, yaw; };
 
-
-/**
-* \brief return rpy(xyz) theta.
-*/
 Eigen::Vector3d toEulerAngles(Eigen::Quaterniond q);
+
+Eigen::Quaterniond ToQuaternion(double yaw, double pitch, double roll);

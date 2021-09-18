@@ -40,7 +40,7 @@ void EventGrabber::GrabEvent(const dvs_msgs::EventArrayConstPtr& msg)
     eventdata.time_stamp = (msg->events[0].ts - begin_time).toSec(); 
     eventdata.event = msg->events; // vector<dvsmsg::event> 
     double delta_time = (msg->events.back().ts-msg->events.front().ts).toSec();
-    cout<<"receiving events at t: " << eventdata.time_stamp<<", delta time " << delta_time <<endl;
+    cout<<"receiving events " << eventdata.event.size() <<", time: " << eventdata.time_stamp<<", delta time " << delta_time <<endl;
 
     system->pushEventData(eventdata);
 }
@@ -53,6 +53,8 @@ void PoseGrabber::GrabPose(const geometry_msgs::PoseStampedConstPtr& msg)
     // not need to copy eventdata obj
     PoseData poseData; 
     poseData.time_stamp = (msg->header.stamp-begin_time).toSec(); 
+    poseData.time_stamp_ros = msg->header.stamp; 
+    
     // vector<geometry::pose> 
     poseData.pose << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
     
@@ -60,7 +62,7 @@ void PoseGrabber::GrabPose(const geometry_msgs::PoseStampedConstPtr& msg)
     poseData.quat = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x,
                 msg->pose.orientation.y, msg->pose.orientation.z);
     
-    cout<<"receiving poses t: " << poseData.time_stamp<< endl;
+    cout<<"receiving poses t: " << poseData.time_stamp << "， ros: " << std::to_string(poseData.time_stamp_ros.toSec()) << endl;
     // cout << "----(xyz)(wxyz)" << poseData.pose.transpose() <<  poseData.quat.coeffs().transpose() << endl;
 
     system->pushPoseData(poseData);

@@ -36,9 +36,10 @@ struct ImageData
 struct PoseData
 {
     double time_stamp; 
+    ros::Time time_stamp_ros;
     uint32_t seq;
     Eigen::Quaterniond quat; 
-    Eigen::Vector3f pose; 
+    Eigen::Vector3d pose; 
 };
 
 struct CameraPara
@@ -52,17 +53,20 @@ struct CameraPara
     double rd1;
     double rd2;
 
-    int width, height; 
+    int width, height, height_map, width_map;
 
     cv::Mat cameraMatrix, distCoeffs ;
     
-    Eigen::Matrix3f eg_cameraMatrix, eg_MapMatrix;
+    Eigen::Matrix3d eg_cameraMatrix, eg_MapMatrix;
     
+
 };
 
 enum PlotOption
 {
-    SIGNED_EVNET_IMAGE_COLOR
+    U16C3_EVNET_IMAGE_COLOR,
+    U16C1_EVNET_IMAGE,
+    S16C1_EVNET_IMAGE
 };
 
 
@@ -72,8 +76,9 @@ enum PlotOption
 struct EventBundle{
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    EventBundle(): size(0) {}
-    EventBundle(const EventBundle& eb);
+    EventBundle();
+    EventBundle(const EventBundle& eb); 
+    ~EventBundle();
 
     // core opearte
     void Append(EventData& eventData);
@@ -84,27 +89,31 @@ struct EventBundle{
 
     // image process 
     // GetEventImage() // options with signed or color 
-    void InverseProjection(Eigen::Matrix3f& K);
-    void Projection(Eigen::Matrix3f& K);
+    void InverseProjection(Eigen::Matrix3d& K);
+    void Projection(Eigen::Matrix3d& K);
 
 
     // events in eigen form used as 3d porjection    
-    Eigen::Matrix2Xf coord;    // row, col = (2,pixels)
-    Eigen::Matrix3Xf coord_3d;
+    Eigen::Matrix2Xd coord;                   // row, col = [2,pixels], used for Eigen rotation 
+    Eigen::Matrix3Xd coord_3d;                // row, col = [3,pixels], used for Eigen rotation 
 
     // relative time of event
-    Eigen::VectorXf time_delta;       // front is beginning
-    Eigen::VectorXf time_delta_rev;   // back is  beginning
+    Eigen::VectorXd time_delta;               // later is positive
+    Eigen::VectorXd time_delta_rev;           // currently not used 
 
     // the estimate para of local events
-    Eigen::Vector3f angular_velocity, angular_position; 
+    Eigen::Vector3d angular_velocity,         // angleAxis current velocity, used to sharp local events
+                    angular_position;         // angleAxis current pos, warp cur camera to world coord.
+
+    // Eigen::Matrix3d rotation_cur2ref;      // from camera to world s
 
     // events in vector form, used as data storage
-    double abs_tstamp;          // receiving time at ROS system
-    ros::Time first_tstamp, last_tstamp; // event time 
-    vector<float> x, y;         // event coor
-    vector<bool> polar;         // event polar
-    vector<bool> isInner;       // indicating the event is inner 
+    // double abs_tstamp;                     // receiving time at ROS system
+    
+    ros::Time first_tstamp, last_tstamp;      // event time in ros system. 
+    // vector<double> x, y;                      // original event coor  used for opencv
+    vector<bool> polar;                       // original event polar
+    Eigen::VectorXf isInner;                     // indicating the event is inner 
     size_t size; 
 
 };
