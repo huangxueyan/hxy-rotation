@@ -19,6 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(Sophus REQUIRED )
+find_package(Ceres REQUIRED )
 
 
 ## System dependencies are found with CMake's conventions
@@ -127,6 +128,7 @@ include_directories(
     include
     ${catkin_INCLUDE_DIRS}
     ${Sophus_INCLUDE_DIRS}
+    ${CERES_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -166,6 +168,7 @@ target_link_libraries(${PROJECT_NAME}_node
     ${OpenCV_LIBS}
     ${Eigen3_LIBS}
     ${Sophus_LIBRARIES} 
+    ${CERES_LIBRARIES}
 )
 
 #############

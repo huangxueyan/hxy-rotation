@@ -62,7 +62,7 @@ void PoseGrabber::GrabPose(const geometry_msgs::PoseStampedConstPtr& msg)
     poseData.quat = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x,
                 msg->pose.orientation.y, msg->pose.orientation.z);
     
-    cout<<"receiving poses t: " << poseData.time_stamp << "， ros: " << std::to_string(poseData.time_stamp_ros.toSec()) << endl;
+    // cout<<"receiving poses t: " << poseData.time_stamp << "， ros: " << std::to_string(poseData.time_stamp_ros.toSec()) << endl;
     // cout << "----(xyz)(wxyz)" << poseData.pose.transpose() <<  poseData.quat.coeffs().transpose() << endl;
 
     system->pushPoseData(poseData);

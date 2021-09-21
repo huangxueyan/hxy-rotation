@@ -112,8 +112,8 @@ struct EventBundle{
     
     ros::Time first_tstamp, last_tstamp;      // event time in ros system. 
     // vector<double> x, y;                      // original event coor  used for opencv
-    vector<bool> polar;                       // original event polar
-    Eigen::VectorXf isInner;                     // indicating the event is inner 
+    Eigen::VectorXf polar;                       //  0, 1 event polar
+    Eigen::VectorXf isInner;                     //  0, 1 indicating the event is inner 
     size_t size; 
 
 };

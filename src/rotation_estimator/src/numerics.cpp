@@ -49,12 +49,16 @@ Eigen::Vector3d InvSO3(const Eigen::Matrix3d &R)
 * \brief from 3 theta to rotation matrix.
 * \param rpy rotation angle in rad format. .
 */
-Eigen::Matrix3d SO3add(const Eigen::Vector3d &x, const Eigen::Vector3d &y)
+Eigen::Vector3d SO3add(const Eigen::Vector3d &x1, const Eigen::Vector3d &x2, bool circle)
 {
-
-    Eigen::Matrix3d x_hat; 
-
-    return x_hat; 
+    if (circle && (x1 + x2).norm() > M_PI)
+    {
+        return x1 + x2;
+    }
+    else
+    {
+        return InvSO3(SO3(x1) * SO3(x2));
+    }
 }
 
 

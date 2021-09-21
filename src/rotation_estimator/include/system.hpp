@@ -19,6 +19,7 @@
 
 // std 
 #include <vector> 
+#include <queue>
 #include <string>
 #include <fstream>
 #include <cmath>
@@ -59,7 +60,12 @@ public:
         const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR, bool is_mapping=false);
 
     void getMapImage(); 
+
 // optimize
+    void localCM(); 
+
+    void EstimateMotion();  
+    Eigen::Vector3d DeriveErrAnalytic(const Eigen::Vector3d &vel_angleAxis, const Eigen::Vector3d &pos_angleAxis);
 
 // visualize 
     void visualize();
@@ -101,7 +107,8 @@ private:
     EventBundle  event_undis_Bundle;      // current undistort local events 
     EventBundle  event_warpped_Bundle;    // current sharp local events 
     EventBundle  event_Map_Bundle;        // current sharp local events the that warp to t0. 
-    
+    queue<EventData>  que_eventData;     // saved eventData inorder to save
+
 // map 3d 
     vector<EventBundle> vec_Bundle_Maps;  // all the eventbundles that warpped to t0.  
 
@@ -115,8 +122,12 @@ private:
     vector<PoseData> vec_gt_poseData; 
     Eigen::Vector3d gt_angular_velocity; 
 
+    Eigen::Vector3d gt_angleAxis, est_angleAxis; 
+
 // output 
     fstream gt_theta_file, gt_velocity_file; 
+
+
 
 };
 

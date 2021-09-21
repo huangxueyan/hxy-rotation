@@ -73,6 +73,8 @@
         "ratio": "cpp",
         "thread": "cpp",
         "typeindex": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "sparseqr": "cpp",
+        "unordered_set": "cpp"
     }
 }

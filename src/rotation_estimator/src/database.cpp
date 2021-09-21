@@ -71,7 +71,7 @@ EventBundle::EventBundle(const EventBundle& eb)
 
     // x = eb.x;
     // y = eb.y; 
-    // polar = eb.polar;
+    polar = eb.polar;
 
 }
 
@@ -112,7 +112,7 @@ void EventBundle::Clear()
 */
 void EventBundle::DiscriminateInner(int width, int height)
 {
-    cout << "DiscriminateInner "<< size << endl;
+    // cout << "DiscriminateInner "<< size << endl;
     isInner.resize(size); 
     // if(x.size() != isInner.size()) cout << "inner wrong size" << endl;
 
@@ -153,6 +153,7 @@ void EventBundle::Append(EventData& eventData)
 
     coord.conservativeResize(2,size);
     coord_3d.conservativeResize(3,size);
+    polar.conservativeResize(size);
 
     time_delta.conservativeResize(size);
     time_delta_rev.conservativeResize(size);  // not used 
@@ -164,7 +165,7 @@ void EventBundle::Append(EventData& eventData)
 
         // x.push_back(i.x);
         // y.push_back(i.y);
-        polar.push_back(i.polarity==0);
+        polar(old_size+counter) = i.polarity==0;
 
         coord(0, old_size+counter) = i.x;
         coord(1, old_size+counter) = i.y;
@@ -227,7 +228,7 @@ void EventBundle::Projection(Eigen::Matrix3d& K)
     coord.row(0) = coord_3d.row(0).array() / coord_3d.row(2).array() * K(0,0) + K(0,2);
     coord.row(1) = coord_3d.row(1).array() / coord_3d.row(2).array() * K(1,1) + K(1,2);
     coord = coord.array().round(); // pixel wise 
-    cout << "  projecting sucess " << endl;
+    // cout << "  projecting sucess " << endl;
 }
 
 

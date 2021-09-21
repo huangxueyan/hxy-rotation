@@ -108,8 +108,8 @@ void System::undistortEvents()
 cv::Mat System::getImageFromBundle(EventBundle& cur_event_bundle, const PlotOption& option, bool is_mapping /*=false*/)
 {
 
-    cout << "getImageFromBundle " << cur_event_bundle.coord.cols() << ", is_mapping "<< is_mapping << endl;
-    cout << "enter for interval " << "cols " << cur_event_bundle.isInner.rows()<< endl;
+    // cout << "getImageFromBundle " << cur_event_bundle.coord.cols() << ", is_mapping "<< is_mapping << endl;
+    // cout << "enter for interval " << "cols " << cur_event_bundle.isInner.rows()<< endl;
 
     cv::Mat image;
 
@@ -120,12 +120,12 @@ cv::Mat System::getImageFromBundle(EventBundle& cur_event_bundle, const PlotOpti
         width = camera.width_map; 
         height = camera.height_map; 
     }
-    cout << "  image size (h,w) = " << height << "," << width << endl;
+    // cout << "  image size (h,w) = " << height << "," << width << endl;
 
     switch (option)
     {
     case PlotOption::U16C3_EVNET_IMAGE_COLOR:
-        cout << "  choosing U16C3_EVNET_IMAGE_COLOR" << endl;
+        // cout << "  choosing U16C3_EVNET_IMAGE_COLOR" << endl;
         image = cv::Mat(height,width, CV_16UC3);
         image = cv::Scalar(0,0,0); // clear first 
         
@@ -142,21 +142,15 @@ cv::Mat System::getImageFromBundle(EventBundle& cur_event_bundle, const PlotOpti
 
             if(x >= width  ||  x < 0 || y >= height|| y < 0 ) 
                 cout << "x, y" << x << "," << y << endl;
-            
-            // x = x >= width  ? width -1 : x; 
-            // y = y >= height ? height-1 : y; 
-            // x = x < 1 ? 0 : x; 
-            // y = y < 1 ? 0 : y; 
-
+        
             // cout << "x, y" << x << "," << y << endl;
 
             cv::Point2i point_temp(x,y);
 
-            image.at<cv::Vec3w>(point_temp) += (eventBundle.polar[i] ? cv::Vec3w(0, 0, 1) : cv::Vec3w(1, 0, 0));
-            // image.at<cv::Vec3s>(point_temp) += (eventBundle.polar[i] ? cv::Vec3s(1, 0, 0) : cv::Vec3s(0, 0, 1));
+            image.at<cv::Vec3w>(point_temp) += (eventBundle.polar[i] > 0 ? cv::Vec3w(0, 0, 1) : cv::Vec3w(1, 0, 0));
         }
 
-        cout << "image size"  << image.size() <<endl;
+        // cout << "image size"  << image.size() <<endl;
         break;
     
     case PlotOption::U16C1_EVNET_IMAGE:
@@ -174,8 +168,6 @@ cv::Mat System::getImageFromBundle(EventBundle& cur_event_bundle, const PlotOpti
             if(x >= width  ||  x < 0 || y >= height || y < 0 ) 
                 cout << "x, y" << x << "," << y << endl;
 
-            // cout << "x, y" << x <<  "," << y << endl;
-
             // x = x >= width  ? width -1 : x; 
             // y = y >= height ? height-1 : y; 
             // x = x < 1 ? 0 : x; 
@@ -191,7 +183,7 @@ cv::Mat System::getImageFromBundle(EventBundle& cur_event_bundle, const PlotOpti
         break;
     }
 
-    cout << "  success get image " << endl;
+    // cout << "  success get image " << endl;
     return image;
 }
 
@@ -253,15 +245,19 @@ Eigen::Matrix3d System::get_local_rotation_b2f()
 
 
 
+
+
 /**
 * \brief input evene vector from ros msg.
 * \param[in] eventData event array of dvs_msg::Event .
 */
 void System::pushEventData(EventData& eventData)
 {
-    // save in vector eventData and event bundle (local events)
-    // vec_eventData.push_back(eventData);  // in system 
-    eventBundle.Append(eventData);       // in event bundle 
+    // save in queue eventData and event bundle (local events)
+    que_eventData.push(eventData);                   // in system 
+    eventBundle.Append(que_eventData.front());       // in event bundle 
+    que_eventData.pop();                             // guarantee the earlier events are processed 
+
 
     // check the time interval is match 
     double time_inteval = (eventBundle.last_tstamp - eventBundle.first_tstamp).toSec();
@@ -276,36 +272,46 @@ void System::pushEventData(EventData& eventData)
         /* estimate current motion */ 
         if(vec_angular_velocity.empty())
         {
-            cout << "no engough pose" << endl;
+            cout << "no enough pose" << endl;
             eventBundle.Clear();
             return;
         }
         else
         {
-            cout << "engough pose" << endl;
+            cout << "enough pose for estimation" << endl;
         }
 
-         /* get local bundle sharper */ 
+        /* get local bundle sharper using gt*/ 
         Eigen::Matrix3d R_t1_t2 = get_local_rotation_b2f();
         Eigen::AngleAxisd ang_axis(R_t1_t2);
         double _delta_time = eventBundle.time_delta[eventBundle.time_delta.rows()-1]; 
         ang_axis.angle() /= _delta_time;  // get angular velocity
+        // getWarpedEventImage(ang_axis.axis() * ang_axis.angle());
+        // cout<< "output getWarpedEventImage" << endl;
 
-        getWarpedEventImage(ang_axis.axis() * ang_axis.angle());
-        cout<< "output getWarpedEventImage" << endl;
+
+        /* get local bundle sharper using ceres CM method */ 
+        gt_angleAxis = ang_axis.axis() * ang_axis.angle();
+        // localCM();
+        // cout << "using angle Axis "<< est_ang_axis.transpose() << endl; 
+        // getWarpedEventImage(est_ang_axis);
+
+
+        /* get local bundle sharper using self iteration CM method */ 
+        EstimateMotion();
+        getWarpedEventImage(est_angleAxis);
 
 
         /* get global maps */ 
-        getMapImage();
-
+        // getMapImage();
 
         // show event image 
-
         visualize();     
-        // clear event bundle 
     }
 
+    // clear event bundle 
     eventBundle.Clear();
+    cout << "-------end of callback -------" << endl;
 }
 
 
