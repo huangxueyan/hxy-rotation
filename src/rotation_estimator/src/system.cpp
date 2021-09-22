@@ -291,15 +291,15 @@ void System::pushEventData(EventData& eventData)
 
 
         /* get local bundle sharper using ceres CM method */ 
-        gt_angleAxis = ang_axis.axis() * ang_axis.angle();
+        // gt_angleAxis = ang_axis.axis() * ang_axis.angle();
         // localCM();
-        // cout << "using angle Axis "<< est_ang_axis.transpose() << endl; 
-        // getWarpedEventImage(est_ang_axis);
+        // cout << "using angle Axis "<< est_angleAxis.transpose() << endl; 
+        // getWarpedEventImage(est_angleAxis);
 
 
         /* get local bundle sharper using self iteration CM method */ 
-        EstimateMotion();
-        getWarpedEventImage(est_angleAxis);
+        // EstimateMotion();
+        // getWarpedEventImage(est_angleAxis);
 
 
         /* get global maps */ 

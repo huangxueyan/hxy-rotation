@@ -63,7 +63,7 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
         eventOut.coord_3d = eventIn.coord_3d
                                     + Eigen::MatrixXd( 
                                         ang_vel_hat_mul_x.array().rowwise() 
-                                        * (-delta_time.transpose().array())
+                                        * (delta_time.transpose().array())
                                         + ang_vel_hat_sqr_mul_x.array().rowwise() 
                                         * (0.5f * delta_time.transpose().array().square()) );
         // cout << "delta_t " << delta_time.topRows(5).transpose() << endl;
@@ -158,28 +158,37 @@ public:
         // cv::Mat mean, var_mat; 
         // cv::meanStdDev(image, mean, var_mat);
 
-        float event_norm =  1.0/255;
-        image *= event_norm;  // normalized. 
+        // float event_norm =  1.0/255;
+        // image *= event_norm;  // normalized. 
         residuals[0] = 5 - cv::norm(image)*cv::norm(image);
 
 
         // save imaeg 
-        // cv::Mat image_write;
-        // cv::normalize(image, image_write, 0,1, cv::NORM_MINMAX, CV_8U);
+        cv::Mat image_write;
+        cv::normalize(image, image_write, 0,255, cv::NORM_MINMAX, CV_8U);
         // cv::threshold(image_write, image_write, 0.3, 255, cv::THRESH_BINARY);
-        // cv::imwrite("/home/hxt/Desktop/hxy-rotation/data/optimize/"+std::to_string(ros::Time::now().toSec())+".png", image_write);
-        // cv::imshow("optimizeing ", image);
-        // cv::waitKey(100);
-        cout << "loss " << residuals[0]  <<", angle "<< ag_x << "," << ag_y << "," << ag_z << endl; 
+        std::string time = std::to_string(ros::Time::now().toSec());
+        // cv::imwrite("/home/hxt/Desktop/hxy-rotation/data/optimize/"+time+".png", image_write);
+        cv::imshow("optimizeing ", image_write);
+        cv::waitKey(100);
+        cout << time +", loss " << residuals[0]  <<", angle "<< ag_x << "," << ag_y << "," << ag_z << endl; 
+
 
         // calculate gradient 
-        if(!jacobians) return true;
-        if(!jacobians[0]) return true;
+        if (jacobians == NULL || jacobians[0] == NULL)
+            return true;
 
-        cv::Mat blur_image, Ix, Iy; 
-        cv::GaussianBlur(image, blur_image, cv::Size(5, 5), 1);
+        cv::Mat truncated_image, blur_image, Ix, Iy; 
+        int threshold = 10; 
+        cv::threshold(image, truncated_image, threshold, 255, cv::THRESH_TRUNC); 
+        cv::GaussianBlur(truncated_image, blur_image, cv::Size(5, 5), 1);
         cv::Sobel(blur_image, Ix, CV_32FC1, 1, 0);
         cv::Sobel(blur_image, Iy, CV_32FC1, 0, 1);
+
+        cout << "warped_event_image " << cv::norm(image) << 
+            ", truncated_event " << cv::norm(truncated_image) << 
+            ", blur_image " << cv::norm(blur_image) << 
+            ", Ix" << cv::norm(Ix) << endl;
 
         Eigen::VectorXd Ix_interp, Iy_interp, x_z, y_z, _delta_time_valid;  // the first row of euq(8)
         Eigen::Matrix3Xd eg_jacobian;
@@ -221,6 +230,9 @@ public:
         jacobians[0][1] = eg_jacobian.row(1) * _delta_time_valid;
         jacobians[0][2] = eg_jacobian.row(2) * _delta_time_valid;
         
+
+        cout << "jacobian " << jacobians[0][0]<<"," <<jacobians[0][1] <<","<< jacobians[0][2] << endl; 
+
         return true;
     }
 
@@ -256,10 +268,10 @@ Eigen::Vector3d System::DeriveErrAnalytic(const Eigen::Vector3d &vel_angleAxis, 
     cv::Sobel(blur_image, Iy, CV_32FC1, 0, 1);
 
     // cout << "using ag " << vel_angleAxis.transpose() << endl;
-    cout << "warped_event_image " << cv::norm(curr_warpped_event_image) << 
-        ", truncated_image " << cv::norm(truncated_image) << 
-        ", blur_image " << cv::norm(blur_image) << 
-        ", Ix" << cv::norm(Ix) << endl;
+    // cout << "warped_event_image " << cv::norm(curr_warpped_event_image) << 
+    //     ", truncated_image " << cv::norm(truncated_image) << 
+    //     ", blur_image " << cv::norm(blur_image) << 
+    //     ", Ix" << cv::norm(Ix) << endl;
 
     Eigen::VectorXd Ix_interp, Iy_interp, x_z, y_z, _delta_time_valid;  // the first row of euq(8)
     Eigen::Matrix3Xd eg_jacobian;
@@ -313,11 +325,11 @@ Eigen::Vector3d System::DeriveErrAnalytic(const Eigen::Vector3d &vel_angleAxis, 
                         + Iy_interp.array()*x_z.array();
 
 
-    cout << "Ix_interp " << Ix_interp.topRows(5).transpose() << endl;
-    cout << "warped_image_delta_t " << warped_image_delta_t.topRows(5).transpose() << endl;
-    cout << "eg_jacobian " << eg_jacobian.topLeftCorner(1,5).transpose()  <<endl;
-    cout << "_delta_time " << _delta_time_valid.topRows(5).transpose()  <<endl;
-    cout << "curr_warpped_event_image :\n" << curr_warpped_event_image(cv::Range(100, 110), cv::Range(100, 110)) << endl;
+    // cout << "Ix_interp " << Ix_interp.topRows(5).transpose() << endl;
+    // cout << "warped_image_delta_t " << warped_image_delta_t.topRows(5).transpose() << endl;
+    // cout << "eg_jacobian " << eg_jacobian.topLeftCorner(1,5).transpose()  <<endl;
+    // cout << "_delta_time " << _delta_time_valid.topRows(5).transpose()  <<endl;
+    // cout << "curr_warpped_event_image :\n" << curr_warpped_event_image(cv::Range(100, 110), cv::Range(100, 110)) << endl;
     
     
     Eigen::Vector3d jacobian;
@@ -330,7 +342,7 @@ Eigen::Vector3d System::DeriveErrAnalytic(const Eigen::Vector3d &vel_angleAxis, 
     // jacobian(1) = eg_jacobian.row(1) * warped_image_delta_t;
     // jacobian(2) = eg_jacobian.row(2) * warped_image_delta_t;
 
-    cout << "gradient " << jacobian.transpose() << endl;
+    // cout << "gradient " << jacobian.transpose() << endl;
     return jacobian;
 }
 void System::EstimateMotion()
@@ -355,12 +367,13 @@ void System::EstimateMotion()
         double temp_jaco = jacobian.transpose()*jacobian; 
         nu_event =  temp_jaco*(1.0 - rho_event) + rho_event * nu_event;
         // update velocity TODO minus gradient ?? 
-        angular_velocity_compensator = - mu_event / std::sqrt(nu_event) * jacobian;
+        angular_velocity_compensator = + mu_event / std::sqrt(nu_event) * jacobian;
         // est_angleAxis = SO3add(angular_velocity_compensator,est_angleAxis , true); 
         est_angleAxis = SO3add(est_angleAxis, angular_velocity_compensator, true); 
 
         // cout << "nu_event " << nu_event <<"," << "rho_event " <<rho_event << endl;
-
+        cout << "scale " << mu_event / std::sqrt(nu_event) << endl;
+        cout << "jacobian " << jacobian.transpose() << endl;
 
         getWarpedEventImage(est_angleAxis);
         cv::imshow("opti", curr_warpped_event_image);
@@ -534,9 +547,9 @@ void System::localCM()
 
     // set opti paramters 
     ceres::Solver::Options options;
-    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY; 
+    // options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY; 
     options.minimizer_progress_to_stdout = true;
-    options.use_nonmonotonic_steps = false;
+    // options.use_nonmonotonic_steps = false;
 
     // output 
     ceres::Solver::Summary summary;
