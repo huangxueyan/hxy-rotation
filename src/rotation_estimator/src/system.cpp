@@ -33,14 +33,19 @@ System::System(const string& yaml)
     cv::namedWindow("curr_undis_event_image", cv::WINDOW_NORMAL);
     cv::namedWindow("curr_warpped_event_image", cv::WINDOW_NORMAL);
 
-    cv::namedWindow("curr_map_image", cv::WINDOW_NORMAL);
+    // cv::namedWindow("curr_map_image", cv::WINDOW_NORMAL);
+     cv::namedWindow("hot_image", cv::WINDOW_NORMAL);
 
     // before processing 
     curr_undis_image = cv::Mat(camera.height,camera.width, CV_8U);
     curr_raw_image = cv::Mat(camera.height,camera.width, CV_8U);
     curr_event_image = cv::Mat(camera.height,camera.width, CV_32FC3);
+    hot_image = cv::Mat(camera.height,camera.width, CV_8UC3);
 
-    // curr_event_image_fc3 = cv::Mat(camera.height,camera.width, CV_8UC3);
+    // optimizeing 
+    int dims[] = {180,240,20};   // row, col, channels
+    cv_3D_surface_index = cv::Mat(3, dims, CV_32S);
+    cv_3D_surface_index_count = cv::Mat(180, 240, CV_32S);
     
     // after processing 
     curr_undis_event_image = cv::Mat(camera.height,camera.width, CV_32F);
@@ -78,8 +83,13 @@ void System::undistortEvents()
     for(size_t i=0; i<point_size; ++i)
         raw_event_points[i] = cv::Point2f(eventBundle.coord(0,i),eventBundle.coord(1,i));
     
+    // cv::undistortPoints(raw_event_points, undis_event_points, 
+    //         camera.cameraMatrix, camera.distCoeffs, cv::noArray(), camera.cameraMatrix);
+    
+    cv::Mat undis = (cv::Mat_<double>(1,4) << 0, 0, 0 ,0 );
     cv::undistortPoints(raw_event_points, undis_event_points, 
-            camera.cameraMatrix, camera.distCoeffs, cv::noArray(), camera.cameraMatrix);
+            camera.cameraMatrix,undis , cv::noArray(), camera.cameraMatrix);
+    
     
     // convert points to cv_mat 
     cv::Mat temp_mat = cv::Mat(undis_event_points); 
@@ -104,14 +114,20 @@ void System::undistortEvents()
 /**
 * \brief Constructor.
 * \param is_mapping means using K_map image size.
+* \param cv_3D_surface_index store index (height, width, channel)
+* \param cv_3D_surface_index_count store index count (height, width, count)
 */
-cv::Mat System::getImageFromBundle(EventBundle& cur_event_bundle, const PlotOption& option, bool is_mapping /*=false*/)
+cv::Mat System::getImageFromBundle(EventBundle& cur_event_bundle, const PlotOption option, bool is_mapping /*=false*/)
 {
 
     // cout << "getImageFromBundle " << cur_event_bundle.coord.cols() << ", is_mapping "<< is_mapping << endl;
     // cout << "enter for interval " << "cols " << cur_event_bundle.isInner.rows()<< endl;
 
     cv::Mat image;
+    // cv::Mat img_surface_index; // store time index 
+
+    int max_count = 0;
+
 
     int width = camera.width, height = camera.height; 
 
@@ -168,16 +184,42 @@ cv::Mat System::getImageFromBundle(EventBundle& cur_event_bundle, const PlotOpti
             if(x >= width  ||  x < 0 || y >= height || y < 0 ) 
                 cout << "x, y" << x << "," << y << endl;
 
-            // x = x >= width  ? width -1 : x; 
-            // y = y >= height ? height-1 : y; 
-            // x = x < 1 ? 0 : x; 
-            // y = y < 1 ? 0 : y; 
-
             cv::Point2i point_temp(x,y);
-
             image.at<unsigned short>(point_temp) += 1;
         }
         break;
+    
+    case PlotOption::TIME_SURFACE:
+        cout << "build time surface " << endl;
+        cv_3D_surface_index.setTo(0); cv_3D_surface_index_count.setTo(0); 
+        image = cv::Mat(height, width, CV_32FC1);
+        image = cv::Scalar(0);
+
+        for(int i=0; i<cur_event_bundle.size; i++)
+        {
+            int x = cur_event_bundle.coord.col(i)[0];
+            int y = cur_event_bundle.coord.col(i)[1];
+
+            if(cur_event_bundle.isInner(i) < 1) continue;
+
+            if(x >= width  ||  x < 0 || y >= height || y < 0 ) 
+                cout << "x, y" << x << "," << y << endl;
+
+            image.at<float>(y,x) = eventBundle.time_delta(i)*1e3;  // only for visualization 
+
+            cv_3D_surface_index.at<int>(y,x,cv_3D_surface_index_count.at<int>(y,x)) = i;
+            cv_3D_surface_index_count.at<int>(y,x) += 1; 
+            max_count = std::max(max_count,  cv_3D_surface_index_count.at<int>(y,x));
+
+            // cout << eventBundle.time_delta(i)<< endl;
+            // img_surface_index.at<unsigned short>(y,x) = i;
+            // cout << eventBundle.time_delta(i) << endl;
+        }
+
+        cout << "max_count channels " << max_count << endl;
+        // cout << "size " << eventBundle.time_delta.size() << endl; 
+        // cout << "size " << cur_event_bundle.coord.cols() << endl; 
+        break; 
     default:
         cout << "default choice " << endl;
         break;
@@ -204,9 +246,10 @@ Eigen::Matrix3d System::get_global_rotation_b2f(size_t idx_t1, size_t idx_t2)
 
 
 /**
-* \brief get_local_rotation_b2f using current eventbundle, return the rotation matrix from t1(start) to t2(end). 
+* \brief get_local_rotation_b2f using current eventbundle, return the rotation matrix from t2(end) to t1(start). 
+* \param reverse from t1->t2. as intuision. 
 */
-Eigen::Matrix3d System::get_local_rotation_b2f()
+Eigen::Matrix3d System::get_local_rotation_b2f(bool inverse)
 {
     int target1_pos, target2_pos; 
     size_t start_pos = vec_gt_poseData.size() > 50 ? vec_gt_poseData.size()-50 : 0;
@@ -235,12 +278,15 @@ Eigen::Matrix3d System::get_local_rotation_b2f()
     // cout << "event  last time " << std::to_string(eventBundle.last_tstamp.toSec()) <<  
     //         ", pose time: "<< std::to_string(vec_gt_poseData[target2_pos].time_stamp_ros.toSec())<<endl;
 
-
     Eigen::Matrix3d R1 = vec_gt_poseData[target1_pos].quat.toRotationMatrix();
     Eigen::Matrix3d R2 = vec_gt_poseData[target2_pos].quat.toRotationMatrix();
 
+    // from t1->t2
+    if(inverse) 
+        return R2.transpose()*R1;
+    
+    // from t2->t1
     return R1.transpose()*R2;
-
 }
 
 
@@ -282,24 +328,31 @@ void System::pushEventData(EventData& eventData)
         }
 
         /* get local bundle sharper using gt*/ 
+        // Eigen::Matrix3d R_t1_t2 = get_local_rotation_b2f();
+        // Eigen::AngleAxisd ang_axis(R_t1_t2);
+        // double _delta_time = eventBundle.time_delta[eventBundle.time_delta.rows()-1]; 
+        // ang_axis.angle() /= _delta_time;  // get angular velocity
+        // gt_angleAxis = ang_axis.axis() * ang_axis.angle();
+
         Eigen::Matrix3d R_t1_t2 = get_local_rotation_b2f();
         Eigen::AngleAxisd ang_axis(R_t1_t2);
         double _delta_time = eventBundle.time_delta[eventBundle.time_delta.rows()-1]; 
         ang_axis.angle() /= _delta_time;  // get angular velocity
-        // getWarpedEventImage(ang_axis.axis() * ang_axis.angle());
-        // cout<< "output getWarpedEventImage" << endl;
+        gt_angleAxis = ang_axis.axis() * ang_axis.angle();
+        // display gt
+        getWarpedEventImage(ang_axis.axis() * ang_axis.angle());
 
 
         /* get local bundle sharper using ceres CM method */ 
-        // gt_angleAxis = ang_axis.axis() * ang_axis.angle();
         // localCM();
         // cout << "using angle Axis "<< est_angleAxis.transpose() << endl; 
         // getWarpedEventImage(est_angleAxis);
 
-
         /* get local bundle sharper using self iteration CM method */ 
-        // EstimateMotion();
+        EstimateMotion_kim();
         // getWarpedEventImage(est_angleAxis);
+
+        // EstimateMotion_ransca();
 
 
         /* get global maps */ 
@@ -405,7 +458,8 @@ void System::visualize()
         // "types " << curr_undis_event_image.type() << endl;
     cv::imshow("curr_undis_event_image", curr_undis_event_image);
     cv::imshow("curr_warpped_event_image", curr_warpped_event_image);
-    cv::imshow("curr_map_image", curr_map_image);
+    // cv::imshow("curr_map_image", curr_map_image);
+    cv::imshow("hot_image", hot_image);
 
     // cv::imshow("curr_event_image_fc3", curr_event_image_fc3);
     cv::waitKey(100);

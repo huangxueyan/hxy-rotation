@@ -106,7 +106,7 @@ void EventBundle::Clear()
 
 
 /**
-* \brief Constructor.
+* \brief strong DiscriminateInner, for the convinient of gradient .
 * \param width  given boundary, may camera boundary or map view boundary
 * \param height 
 */
@@ -118,12 +118,11 @@ void EventBundle::DiscriminateInner(int width, int height)
 
     for(uint32_t i = 0; i < size; ++i)
     {
-        if(coord(0,i)<0 || coord(0,i)>=width || coord(1,i)<0 || coord(1,i)>=height) 
+        if(coord(0,i)<1 || coord(0,i)>=(width-1) || coord(1,i)<1 || coord(1,i)>=(height-1)) 
             isInner[i] = 0;
         else isInner[i] = 1;
     }
 }
-
 
 EventBundle::~EventBundle(){
 
