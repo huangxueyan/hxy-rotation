@@ -180,10 +180,10 @@ public:
         cv::Sobel(blur_image, Ix, CV_32FC1, 1, 0);
         cv::Sobel(blur_image, Iy, CV_32FC1, 0, 1);
 
-        cout << "warped_event_image " << cv::norm(image) << 
-            ", truncated_event " << cv::norm(truncated_image) << 
-            ", blur_image " << cv::norm(blur_image) << 
-            ", Ix" << cv::norm(Ix) << endl;
+        // cout << "warped_event_image " << cv::norm(image) << 
+        //     ", truncated_event " << cv::norm(truncated_image) << 
+        //     ", blur_image " << cv::norm(blur_image) << 
+        //     ", Ix" << cv::norm(Ix) << endl;
 
         Eigen::VectorXd Ix_interp, Iy_interp, x_z, y_z, _delta_time_valid;  // the first row of euq(8)
         Eigen::Matrix3Xd eg_jacobian;

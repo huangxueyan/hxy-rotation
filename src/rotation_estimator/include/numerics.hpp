@@ -10,6 +10,10 @@
 #include <ceres/ceres.h>
 #include <ceres/rotation.h>
 
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
 Eigen::Matrix3d hat(const Eigen::Vector3d &x); 
 Eigen::Vector3d unhat(const Eigen::Matrix3d &x); 
 Eigen::Matrix3d SO3(const Eigen::Vector3d &x); 
@@ -25,3 +29,4 @@ Eigen::Vector3d toEulerAngles(Eigen::Quaterniond q);
 Eigen::Quaterniond ToQuaternion(double yaw, double pitch, double roll);
 
 
+double getVar(cv::Mat& image, int& );

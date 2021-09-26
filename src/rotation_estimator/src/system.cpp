@@ -14,33 +14,37 @@ System::System(const string& yaml)
         ROS_ERROR("counld not open file %s", yaml.c_str());
     }
 
-    // undistore 
+    // undistore data 
     undist_mesh_x, undist_mesh_y;  
     cv::initUndistortRectifyMap(camera.cameraMatrix, camera.distCoeffs, 
                 cv::Mat::eye(3,3,CV_32FC1), camera.cameraMatrix, cv::Size(camera.width, camera.height), 
                 CV_32FC1, undist_mesh_x, undist_mesh_y);
 
-    // visualize 
 
+    // ros msg 
+    // vec_last_event_idx = 0;
+
+    // visualize 
     // before processing 
     // cv::namedWindow("curr_raw_image", cv::WINDOW_NORMAL);
     // cv::namedWindow("curr_undis_image", cv::WINDOW_NORMAL);
     // cv::namedWindow("curr_event_image", cv::WINDOW_NORMAL);
-
     // cv::namedWindow("curr_event_image_fc3", cv::WINDOW_NORMAL);
 
     // after processing 
     cv::namedWindow("curr_undis_event_image", cv::WINDOW_NORMAL);
-    cv::namedWindow("curr_warpped_event_image", cv::WINDOW_NORMAL);
-
+    // cv::namedWindow("curr_warpped_event_image", cv::WINDOW_NORMAL);
+    cv::namedWindow("curr_warpped_event_image_gt", cv::WINDOW_NORMAL);
     // cv::namedWindow("curr_map_image", cv::WINDOW_NORMAL);
-     cv::namedWindow("hot_image", cv::WINDOW_NORMAL);
+     cv::namedWindow("hot_image_C3", cv::WINDOW_NORMAL);
+     cv::namedWindow("opti", cv::WINDOW_NORMAL);
 
     // before processing 
     curr_undis_image = cv::Mat(camera.height,camera.width, CV_8U);
     curr_raw_image = cv::Mat(camera.height,camera.width, CV_8U);
     curr_event_image = cv::Mat(camera.height,camera.width, CV_32FC3);
-    hot_image = cv::Mat(camera.height,camera.width, CV_8UC3);
+    hot_image_C1 = cv::Mat(camera.height,camera.width, CV_8UC1);
+    hot_image_C3 = cv::Mat(camera.height,camera.width, CV_8UC3);
 
     // optimizeing 
     int dims[] = {180,240,20};   // row, col, channels
@@ -51,16 +55,24 @@ System::System(const string& yaml)
     curr_undis_event_image = cv::Mat(camera.height,camera.width, CV_32F);
     curr_map_image = cv::Mat(camera.height_map,camera.width_map, CV_32F);
     curr_warpped_event_image = cv::Mat(camera.height,camera.width, CV_32F);
+    curr_warpped_event_image_gt = cv::Mat(camera.height,camera.width, CV_32F); 
 
     // output file 
     gt_theta_file = fstream("/home/hxt/Desktop/hxy-rotation/data/saved_gt_theta.txt", ios::out);
     gt_velocity_file = fstream("/home/hxt/Desktop/hxy-rotation/data/saved_gt_theta_velocity.txt", ios::out);
+
+    // thread in background 
+    // thread_view = new thread(&System::visualize, this);
+    // thread_run = new thread(&System::Run, this);
+
 
 }
 
 System::~System()
 {
     cout << "saving files " << endl;
+
+    // delete thread_run; 
     cv::destroyAllWindows();
     gt_theta_file.close();
     gt_velocity_file.close();
@@ -170,7 +182,7 @@ cv::Mat System::getImageFromBundle(EventBundle& cur_event_bundle, const PlotOpti
         break;
     
     case PlotOption::U16C1_EVNET_IMAGE:
-        cout << "enter case U16C1_EVNET_IMAGE" << endl;
+        // cout << "enter case U16C1_EVNET_IMAGE" << endl;
         image = cv::Mat(height, width, CV_16UC1);
         image = cv::Scalar(0);
 
@@ -290,81 +302,172 @@ Eigen::Matrix3d System::get_local_rotation_b2f(bool inverse)
 }
 
 
-
-
-
 /**
-* \brief input evene vector from ros msg.
-* \param[in] eventData event array of dvs_msg::Event .
+* \brief run in back ground, avoid to affect the ros call back function.
 */
-void System::pushEventData(EventData& eventData)
+void System::Run()
 {
-    // save in queue eventData and event bundle (local events)
-    que_eventData.push(eventData);                   // in system 
-    eventBundle.Append(que_eventData.front());       // in event bundle 
-    que_eventData.pop();                             // guarantee the earlier events are processed 
-
-
-    // check the time interval is match 
-    double time_inteval = (eventBundle.last_tstamp - eventBundle.first_tstamp).toSec();
-
-    if(time_inteval > delta_time || eventBundle.coord.cols() > max_store_count)
+    // cout << "run in back ground" << endl; 
+    if(que_vec_eventData.empty())
     {
-        cout << "----processing event bundle" << endl; 
-
-        /* undistort events */ 
-        undistortEvents();
-
-        /* estimate current motion */ 
-        if(vec_angular_velocity.empty())
-        {
-            cout << "no enough pose" << endl;
-            eventBundle.Clear();
-            return;
-        }
-        else
-        {
-            cout << "enough pose for estimation" << endl;
-        }
-
-        /* get local bundle sharper using gt*/ 
-        // Eigen::Matrix3d R_t1_t2 = get_local_rotation_b2f();
-        // Eigen::AngleAxisd ang_axis(R_t1_t2);
-        // double _delta_time = eventBundle.time_delta[eventBundle.time_delta.rows()-1]; 
-        // ang_axis.angle() /= _delta_time;  // get angular velocity
-        // gt_angleAxis = ang_axis.axis() * ang_axis.angle();
-
-        Eigen::Matrix3d R_t1_t2 = get_local_rotation_b2f();
-        Eigen::AngleAxisd ang_axis(R_t1_t2);
-        double _delta_time = eventBundle.time_delta[eventBundle.time_delta.rows()-1]; 
-        ang_axis.angle() /= _delta_time;  // get angular velocity
-        gt_angleAxis = ang_axis.axis() * ang_axis.angle();
-        // display gt
-        getWarpedEventImage(ang_axis.axis() * ang_axis.angle());
-
-
-        /* get local bundle sharper using ceres CM method */ 
-        // localCM();
-        // cout << "using angle Axis "<< est_angleAxis.transpose() << endl; 
-        // getWarpedEventImage(est_angleAxis);
-
-        /* get local bundle sharper using self iteration CM method */ 
-        EstimateMotion_kim();
-        // getWarpedEventImage(est_angleAxis);
-
-        // EstimateMotion_ransca();
-
-
-        /* get global maps */ 
-        // getMapImage();
-
-        // show event image 
-        visualize();     
+        // std::this_thread::sleep_for(std::chrono::milliseconds(10));   
+        // cout << "waiting events " << endl;
+        return; 
     }
+    cout << "----processing event bundle" << endl; 
+    /* reflesh EventBundle */ 
+    updateEventBundle();
+
+
+
+    /* undistort events */ 
+    undistortEvents();
+
+    /* estimate current motion */ 
+    if(vec_angular_velocity.empty())
+    {
+        cout << "no enough pose" << endl;
+        eventBundle.Clear();
+        return;
+    }
+    else
+    {
+        cout << "enough pose for estimation" << endl;
+    }
+
+    /* get local bundle sharper using gt*/ 
+    Eigen::Matrix3d R_t1_t2 = get_local_rotation_b2f();
+    Eigen::AngleAxisd ang_axis(R_t1_t2);
+    double _delta_time = eventBundle.time_delta[eventBundle.time_delta.rows()-1]; 
+    ang_axis.angle() /= _delta_time;  // get angular velocity
+    gt_angleAxis = ang_axis.axis() * ang_axis.angle();
+    // display gt
+    // getWarpedEventImage(ang_axis.axis() * ang_axis.angle(), 
+        // event_warpped_Bundle_gt).convertTo(curr_warpped_event_image, CV_32F);
+
+
+    /* get local bundle sharper using ceres CM method */ 
+    // localCM();
+    // cout << "using angle Axis "<< est_angleAxis.transpose() << endl; 
+    // getWarpedEventImage(est_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32F);
+
+    /* get local bundle sharper using self iteration CM method */ 
+    // EstimateMotion_kim();
+    // getWarpedEventImage(est_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32F);
+
+    est_angleAxis = Eigen::Vector3d(0,0,0); // set to 0. 
+    // EstimateMotion_ransca_once(0.4, 0.3, 1);
+    // EstimateMotion_ransca_once(0.4, 0.7, 1);
+    // EstimateMotion_ransca_once(0.4, 1,   1);
+    // EstimateMotion_ransca_once(0.7, 0.3, 0.5);
+    // EstimateMotion_ransca_once(0.7, 0.7, 0.5);
+    // EstimateMotion_ransca_once(0.7, 1,   0.5);
+    EstimateMotion_ransca_once(0.9, 0.3, 0.1);
+    // cv::waitKey(0);
+    EstimateMotion_ransca_once(0.9, 0.7, 0.1  );
+    // cv::waitKey(0);
+    EstimateMotion_ransca_once(0.9, 1,   0.05);
+    // save gt date 
+    gt_theta_file << eventBundle.first_tstamp -  <<  << endl;
+
+
+    /* get global maps */ 
+    // getMapImage();
+
+    // visualize 
+    visualize(); 
 
     // clear event bundle 
     eventBundle.Clear();
-    cout << "-------end of callback -------" << endl;
+    cout << "-------sucess run thread -------" << endl;
+
+}
+
+/**
+* \brief update eventBundle.
+*/
+void System::updateEventBundle()
+{
+    double max_interval = 0.03;
+
+    // save in queue eventData and event bundle (local events)
+    if(vec_last_event.empty())
+    {
+        std::vector<dvs_msgs::Event>& curr_vec_event = que_vec_eventData.front();
+        que_vec_eventData.pop(); 
+        assert((curr_vec_event.back().ts-curr_vec_event.front().ts).toSec() > max_interval);
+        vec_last_event = curr_vec_event;
+        vec_last_event_idx = 2; 
+    }
+
+
+    ros::Time begin_t = vec_last_event[vec_last_event_idx].ts; 
+
+    if((vec_last_event.back().ts-begin_t).toSec() > max_interval)  // not need to used new event que element. 
+    {
+        // bool flag = false;
+        if((vec_last_event.back().ts-begin_t).toSec() > 10)
+        {
+            for(int i=0; i< 10; i++)
+            {
+                cout << "begin_t i" << i << "," << vec_last_event[i].ts.sec << "." <<  vec_last_event[i].ts.nsec << endl;
+            }
+            cout << "vec_last_event_idx " << vec_last_event_idx 
+                << "back " << vec_last_event.back().ts.sec << "." <<  vec_last_event.back().ts.nsec << 
+                    " size" << vec_last_event.size() << endl;
+        }
+
+
+        for(int i=vec_last_event_idx+1; i<vec_last_event.size(); i++)
+        {
+            if((vec_last_event[i].ts-begin_t).toSec() > max_interval)
+            {
+                // flag = true;
+                std::vector<dvs_msgs::Event> input_event(&vec_last_event[vec_last_event_idx], &vec_last_event[i]); 
+                eventBundle.Append(input_event);       // in event bundle 
+                vec_last_event_idx = i;
+                cout << "current pack is enough " << (vec_last_event[i].ts-begin_t).toSec() <<", count " << input_event.size() << endl;
+                break; 
+            }
+        }
+    }
+    else 
+    {
+        // recovery old events in vec_last_event
+        // extract new events 
+        std::vector<dvs_msgs::Event> curr_vec_event = que_vec_eventData.front();
+        que_vec_eventData.pop();    // guarantee the earlier events are processed                          
+
+        std::vector<dvs_msgs::Event> input_event(&vec_last_event[vec_last_event_idx], &vec_last_event[vec_last_event.size()]);
+        
+        for(int i=0; i<curr_vec_event.size(); i++)
+        {
+            if((curr_vec_event[i].ts-begin_t).toSec() > max_interval)
+            {
+                vec_last_event_idx = i;
+                break; 
+            }
+        }
+        
+        input_event.insert(input_event.end(), curr_vec_event.begin(), curr_vec_event.begin()+vec_last_event_idx);
+        eventBundle.Append(input_event);       // in event bundle 
+        vec_last_event = curr_vec_event;
+
+        cout << "current pack not enough " << (curr_vec_event[vec_last_event_idx].ts-begin_t).toSec() <<", count " << input_event.size() << endl;
+    }
+    
+    cout << "input_event " << eventBundle.size << endl;
+    cout << "-------end of update -------" << endl;
+
+}
+
+/**
+* \brief input evene vector from ros msg, according to time interval.
+*/
+void System::pushEventData(const std::vector<dvs_msgs::Event>& ros_vec_event)
+{
+    que_vec_eventData.push(ros_vec_event); 
+    cout << "push to que_vec_eventData " << endl;  
 }
 
 
@@ -372,7 +475,7 @@ void System::pushEventData(EventData& eventData)
 * \brief input evene vector from ros msg.
 * \param[in] ImageData self defined imagedata.
 */
-void System::pushimageData(ImageData& imageData)
+void System::pushimageData(const ImageData& imageData)
 {
 
     // can be save in vector 
@@ -385,7 +488,7 @@ void System::pushimageData(ImageData& imageData)
     cv::remap(curr_raw_image, curr_undis_image, undist_mesh_x, undist_mesh_y, cv::INTER_LINEAR );
 }
 
-void System::pushPoseData(PoseData& poseData)
+void System::pushPoseData(const PoseData& poseData)
 {
 
     // Eigen::Vector3d v_2 = poseData.quat.toRotationMatrix().eulerAngles(2,1,0);
@@ -445,24 +548,25 @@ void System::pushPoseData(PoseData& poseData)
 
 void System::visualize()
 {
+        cout << "visualize" << endl; 
+            
+        // TODO update all images 
 
-    cout << "visualize" << endl; 
+        // cv::imshow("curr_raw_image", curr_raw_image);
+        // cv::imshow("curr_undis_image", curr_undis_image);
+        // cv::imshow("curr_event_image", curr_event_image);
 
-    // TODO update all images 
+        // cout << "channels " << curr_undis_event_image.channels() << 
+            // "types " << curr_undis_event_image.type() << endl;
+        cv::imshow("curr_undis_event_image", curr_undis_event_image);
+        // cv::imshow("curr_warpped_event_image", curr_warpped_event_image);
+        cv::imshow("curr_warpped_event_image_gt", curr_warpped_event_image_gt);
 
-    // cv::imshow("curr_raw_image", curr_raw_image);
-    // cv::imshow("curr_undis_image", curr_undis_image);
-    // cv::imshow("curr_event_image", curr_event_image);
+        // cv::imshow("curr_map_image", curr_map_image);
+        cv::imshow("hot_image_C3", hot_image_C3);
 
-    // cout << "channels " << curr_undis_event_image.channels() << 
-        // "types " << curr_undis_event_image.type() << endl;
-    cv::imshow("curr_undis_event_image", curr_undis_event_image);
-    cv::imshow("curr_warpped_event_image", curr_warpped_event_image);
-    // cv::imshow("curr_map_image", curr_map_image);
-    cv::imshow("hot_image", hot_image);
-
-    // cv::imshow("curr_event_image_fc3", curr_event_image_fc3);
-    cv::waitKey(100);
+        // cv::imshow("curr_event_image_fc3", curr_event_image_fc3);
+        cv::waitKey(100);
 
 }
 

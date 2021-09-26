@@ -23,6 +23,10 @@
 #include <string>
 #include <fstream>
 #include <cmath>
+#include <thread> 
+#include <mutex>
+#include<chrono>
+
 
 // self 
 #include "database.hpp"
@@ -42,18 +46,21 @@ public:
     ~System();
 
 // ros msg 
-    void pushEventData(EventData& eventData); 
-    void pushimageData(ImageData& imageData); 
-    void pushPoseData(PoseData& poseData);
+    void pushEventData(const std::vector<dvs_msgs::Event>& ros_vec_event);
+    void pushimageData(const ImageData& imageData); 
+    void pushPoseData(const PoseData& poseData);
+    void updateEventBundle();
 
     Eigen::Matrix3d get_local_rotation_b2f(bool inverse = false); 
     Eigen::Matrix3d get_global_rotation_b2f(size_t idx_t1, size_t idx_t2);
 
 
 // imgproc
+    void Run();
     void undistortEvents();
-    void getWarpedEventImage(const Eigen::Vector3d & temp_ang_vel,
+    cv::Mat getWarpedEventImage(const Eigen::Vector3d & temp_ang_vel,EventBundle& event_out,
         const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR); 
+
     void getWarpedEventPoints(const EventBundle& eventIn, EventBundle& eventOut,
         const Eigen::Vector3d& cur_ang_vel, const Eigen::Vector3d& cur_ang_pos=Eigen::Vector3d::Zero(), double delta_time=0);
     cv::Mat getImageFromBundle(EventBundle& eventBundle,
@@ -65,19 +72,27 @@ public:
     void localCM(); 
 
     void EstimateMotion_kim();  
-    void EstimateMotion_ransca();
+    void EstimateMotion_ransca_once(double sample_ratio, double warp_time_ratio, double opti_steps);
     Eigen::Vector3d DeriveErrAnalytic(const Eigen::Vector3d &vel_angleAxis, const Eigen::Vector3d &pos_angleAxis);
-    Eigen::Vector3d DeriveTimeErrAnalytic(const Eigen::Vector3d &vel_angleAxis, 
+    Eigen::Vector3d DeriveTimeErrAnalyticLayer(const Eigen::Vector3d &vel_angleAxis, 
         const std::vector<int>& vec_sampled_idx, double warp_time, double& residuals);
-    double getTimeResidual(int sampled_x, int sampled_y, double sampled_time, double warp_time);
-
+    Eigen::Vector3d DeriveTimeErrAnalyticRansac(const Eigen::Vector3d &vel_angleAxis, 
+        const std::vector<int>& vec_sampled_idx, double warp_time, double& residuals);
+    void getTimeResidual(int sampled_x, int sampled_y, double sampled_time, double warp_time,
+            double& residual, double& grad_x, double& grad_y);
 // visualize 
     void visualize();
 
+// thread
+    // thread* thread_run;
+    // thread* thread_view;
+    std::mutex que_vec_eventData_mutex;
 
 private:
 
-    string yaml;  // configration 
+// configration 
+    string yaml;  
+
 
 // motion 
     vector<double> vec_curr_time;
@@ -95,22 +110,29 @@ private:
     ImageData curr_imageData; 
 
     // image output 
-    cv::Mat curr_raw_image,             // grey image from ros      
-            curr_undis_image,           // undistort grey image  
-            curr_event_image,           // current blur event image 
-            curr_undis_event_image,     // current undistorted event image 
-            curr_warpped_event_image,   // current sharp local event image 
-            curr_map_image,            // global image at t_curr view
-            hot_image;                  // time surface with applycolormap
-// undistor 
+    cv::Mat curr_raw_image,              // grey image from ros      
+            curr_undis_image,            // undistort grey image  
+            curr_event_image,            // current blur event image 
+            curr_undis_event_image,      // current undistorted event image 
+            curr_warpped_event_image,    // current sharp local event image using est
+            curr_warpped_event_image_gt, // current sharp local event image using gt 
+            curr_map_image,              // global image at t_curr view
+            hot_image_C1,
+            hot_image_C3;                  // time surface with applycolormap
+// undistor parameter
     cv::Mat undist_mesh_x, undist_mesh_y;  
 
 // event data
+    std::vector<dvs_msgs::Event>   vec_last_event;           // control the event processing number. 
+    int vec_last_event_idx;               // used to indicating the position of unpushed events. 
+    std::mutex mMutex;
+
     EventBundle  eventBundle;             // current blur local events 
     EventBundle  event_undis_Bundle;      // current undistort local events 
     EventBundle  event_warpped_Bundle;    // current sharp local events 
+    EventBundle  event_warpped_Bundle_gt;    // current sharp local events 
     EventBundle  event_Map_Bundle;        // current sharp local events the that warp to t0. 
-    queue<EventData>  que_eventData;     // saved eventData inorder to save
+    queue<std::vector<dvs_msgs::Event>> que_vec_eventData;     // saved eventData inorder to save
 
 // map 3d 
     vector<EventBundle> vec_Bundle_Maps;  // all the eventbundles that warpped to t0.  
@@ -130,6 +152,7 @@ private:
 
 // output 
     fstream gt_theta_file, gt_velocity_file; 
+    fstream est_theta_file, est_velocity_file; 
 
 };
 

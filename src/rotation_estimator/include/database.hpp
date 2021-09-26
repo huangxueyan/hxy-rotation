@@ -82,7 +82,7 @@ struct EventBundle{
     ~EventBundle();
 
     // core opearte
-    void Append(EventData& eventData);
+    void Append(std::vector<dvs_msgs::Event>& vec_eventData);
     void CopySize(const EventBundle& eb); 
 
     void Clear(); 

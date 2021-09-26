@@ -132,12 +132,12 @@ EventBundle::~EventBundle(){
 /**
 * \brief append eventData to event bundle, resize bundle.
 */
-void EventBundle::Append(EventData& eventData)
+void EventBundle::Append(std::vector<dvs_msgs::Event>& vec_eventData)
 {   
     if(size == 0) 
     {
-        cout << "first appending events, "<< eventData.event.size() << endl;
-        first_tstamp = eventData.event.front().ts;
+        cout << "first appending events, "<< vec_eventData.size() << endl;
+        first_tstamp = vec_eventData.front().ts;
         // abs_tstamp = eventData.time_stamp;
     }
     else
@@ -145,10 +145,10 @@ void EventBundle::Append(EventData& eventData)
         cout << "appending events" << endl;
     }
     
-    last_tstamp = eventData.event.back().ts;
+    last_tstamp = vec_eventData.back().ts;
     
     size_t old_size = size; 
-    size += eventData.event.size(); 
+    size += vec_eventData.size(); 
 
     coord.conservativeResize(2,size);
     coord_3d.conservativeResize(3,size);
@@ -158,7 +158,7 @@ void EventBundle::Append(EventData& eventData)
     time_delta_rev.conservativeResize(size);  // not used 
     
     int counter = 0; 
-    for(const auto& i: eventData.event)
+    for(const auto& i: vec_eventData)
     {
         // TODO sampler 
 

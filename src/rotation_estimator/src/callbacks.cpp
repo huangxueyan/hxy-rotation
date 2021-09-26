@@ -31,18 +31,21 @@ void ImageGrabber::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 }
 
 
-void EventGrabber::GrabEvent(const dvs_msgs::EventArrayConstPtr& msg)
+void EventGrabber::GrabEvent(const dvs_msgs::EventArrayConstPtr& msg) 
 {
     if(begin_time == ros::Time(0))  begin_time = msg->events[0].ts; 
 
     // not need to copy eventdata obj
-    EventData eventdata; 
-    eventdata.time_stamp = (msg->events[0].ts - begin_time).toSec(); 
-    eventdata.event = msg->events; // vector<dvsmsg::event> 
+    // EventData eventdata; 
+    // eventdata.event = msg->events; // vector<dvsmsg::event> 
+    double time_stamp = (msg->events[0].ts - begin_time).toSec(); 
     double delta_time = (msg->events.back().ts-msg->events.front().ts).toSec();
-    cout<<"receiving events " << eventdata.event.size() <<", time: " << eventdata.time_stamp<<", delta time " << delta_time <<endl;
+    cout<<"receiving events " << msg->events.size() <<", time: " << time_stamp<<", delta time " << delta_time <<endl;
 
-    system->pushEventData(eventdata);
+    // system->que_vec_eventData_mutex.lock();
+    system->pushEventData(msg->events);
+    // system->que_vec_eventData_mutex.unlock();
+
 }
 
 

@@ -110,3 +110,47 @@ Eigen::Quaterniond ToQuaternion(double yaw, double pitch, double roll) // yaw (Z
     // std::cout <<"Quaterniond: "<< q.coeffs().transpose() << ", norm: "<<  q.coeffs().norm() << std::endl;
     return q;
 }
+
+
+double getVar(cv::Mat& image, int& count_nozero)
+{
+    // std::cout << image.channels() << std::endl;
+    
+    // cv::Mat grayimage; 
+    // // cv::normalize(image, grayimage,0,255,cv::NORM_MINMAX, CV_8UC3);
+    // image.convertTo(grayimage,CV_8UC3);
+    // cv::cvtColor(grayimage, grayimage, cv::COLOR_BGR2GRAY, 1);
+    // cv::imshow("image", image) ;
+    // cv::imshow("normalize", grayimage) ;
+    // cv::imshow("grayimage", grayimage) ;
+    // cv::waitKey(0);
+
+    assert(image.channels() == 1);
+    assert(image.type() == CV_16UC1);
+
+    double mean = 0; 
+    count_nozero = 1;
+    for(int x = 0; x < image.cols; x++)
+        for(int y = 0; y < image.rows; y++)
+    {
+        if(image.at<unsigned short>(y,x)>0)
+        {
+            mean += image.at<unsigned short>(y,x); 
+            count_nozero++; 
+        }
+    }
+
+    mean /= count_nozero; 
+
+    double var = 0;
+    for(int x = 0; x < image.cols; x++)
+    for(int y = 0; y < image.rows; y++)
+    {
+        if(image.at<unsigned short>(y,x)>0)
+        {
+            var += std::pow(image.at<unsigned short>(y,x)-mean,2);
+        }
+    }
+    var /= count_nozero;
+    return var;
+}
