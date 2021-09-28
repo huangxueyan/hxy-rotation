@@ -33,21 +33,13 @@ int main(int argc, char** argv)
     // ros::Subscriber image_sub = nh.subscribe("/dvs/image_raw", 10, &ImageGrabber::GrabImage, &imageGrabber);
     
     EventGrabber eventGrabber(sys);
-    ros::Subscriber event_sub = nh.subscribe("/dvs/events", 10, &EventGrabber::GrabEvent, &eventGrabber);
+    ros::Subscriber event_sub = nh.subscribe("/dvs/events", 40, &EventGrabber::GrabEvent, &eventGrabber);
 
     PoseGrabber poseGrabber(sys);
     ros::Subscriber pose_sub = nh.subscribe("/optitrack/davis", 10, &PoseGrabber::GrabPose, &poseGrabber);
 
-    ros::Rate loop_rate(1);
 
-
-    while(ros::ok())
-    {
-        loop_rate.sleep();
-        ros::spinOnce();  // exec for callbacks 
-        sys->Run();
-
-    }
+    ros::spin();
     
     cout << "shutdown rotation estimator" << endl;
     return 0;

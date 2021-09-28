@@ -49,7 +49,10 @@ public:
     void pushEventData(const std::vector<dvs_msgs::Event>& ros_vec_event);
     void pushimageData(const ImageData& imageData); 
     void pushPoseData(const PoseData& poseData);
-    void updateEventBundle();
+    void updateEventBundle();  // use less
+    void setBeginTime(ros::Time);
+
+    void save_velocity(); // save velocity date to txt
 
     Eigen::Matrix3d get_local_rotation_b2f(bool inverse = false); 
     Eigen::Matrix3d get_global_rotation_b2f(size_t idx_t1, size_t idx_t2);
@@ -83,10 +86,12 @@ public:
 // visualize 
     void visualize();
 
+    // bool inline checkEmpty(){return que_vec_eventData.empty();}
+
 // thread
     // thread* thread_run;
     // thread* thread_view;
-    std::mutex que_vec_eventData_mutex;
+    // std::mutex que_vec_eventData_mutex;
 
 private:
 
@@ -123,16 +128,17 @@ private:
     cv::Mat undist_mesh_x, undist_mesh_y;  
 
 // event data
-    std::vector<dvs_msgs::Event>   vec_last_event;           // control the event processing number. 
-    int vec_last_event_idx;               // used to indicating the position of unpushed events. 
-    std::mutex mMutex;
+    ros::Time beginTS;                    // begin time stamp of ros Time. 
 
     EventBundle  eventBundle;             // current blur local events 
     EventBundle  event_undis_Bundle;      // current undistort local events 
     EventBundle  event_warpped_Bundle;    // current sharp local events 
     EventBundle  event_warpped_Bundle_gt;    // current sharp local events 
     EventBundle  event_Map_Bundle;        // current sharp local events the that warp to t0. 
-    queue<std::vector<dvs_msgs::Event>> que_vec_eventData;     // saved eventData inorder to save
+    
+    // std::queue<std::vector<dvs_msgs::Event>> que_vec_eventData;     // saved eventData inorder to save
+    std::vector<std::vector<dvs_msgs::Event>> vec_vec_eventData;     // saved eventData inorder to save
+    int vec_vec_eventData_iter;               // used to indicating the position of unpushed events. 
 
 // map 3d 
     vector<EventBundle> vec_Bundle_Maps;  // all the eventbundles that warpped to t0.  
@@ -144,6 +150,7 @@ private:
 
 
 // pose 
+    bool using_gt; 
     vector<PoseData> vec_gt_poseData; // stored rosmsg 
 
     // 逻辑是t2-t1->t0. 如eq(3)所示

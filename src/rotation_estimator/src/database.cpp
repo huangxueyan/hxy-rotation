@@ -81,7 +81,8 @@ EventBundle::EventBundle(const EventBundle& eb)
 */
 void EventBundle::Clear()
 {
-    cout << "event bundle clearing " << endl;
+    cout << "event bundle clearing, size " <<  size << endl;
+
     size = 0; 
 
     // eigen reconstruct

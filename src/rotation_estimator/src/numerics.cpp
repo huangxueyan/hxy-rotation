@@ -1,8 +1,8 @@
 
 #include "numerics.hpp"
 
-
-
+#include <iostream> 
+using namespace std;
 /**
 * \brief convert x[1x3] to asym matrix [3x3].
 * \param[in] x .
@@ -11,8 +11,8 @@ Eigen::Matrix3d hat(const Eigen::Vector3d &x)
 {
     Eigen::Matrix3d x_hat; 
     x_hat << 0, -x(2), x(1), 
-        x(2), 0, -x(0),
-        x(1), x(0), 0;
+            x(2), 0, -x(0),
+            -x(1), x(0), 0;
     return x_hat; 
 }
 
@@ -23,7 +23,7 @@ Eigen::Matrix3d hat(const Eigen::Vector3d &x)
 Eigen::Vector3d unhat(const Eigen::Matrix3d &x_hat)
 {
     Eigen::Vector3d x;
-    x << x_hat(2,1), x_hat(0,2), x(1,0);
+    x << x_hat(2,1), x_hat(0,2), x_hat(1,0);
     return x;
 }
 
@@ -33,7 +33,11 @@ Eigen::Vector3d unhat(const Eigen::Matrix3d &x_hat)
 */
 Eigen::Matrix3d SO3(const Eigen::Vector3d &x)
 {
-    return Eigen::MatrixX3d(hat(x).exp());
+    // cout << " hat(x) \n" <<  hat(x).transpose() << endl;
+    // cout << " exp " << hat(x).exp().transpose() << endl;
+    // cout << " matrix  \n " << Eigen::Matrix3d(hat(x).exp()) << endl;
+
+    return Eigen::Matrix3d(hat(x).exp());
 }
 
 /**
@@ -42,14 +46,23 @@ Eigen::Matrix3d SO3(const Eigen::Vector3d &x)
 */
 Eigen::Vector3d InvSO3(const Eigen::Matrix3d &R)
 {
-    return unhat(R.log());
+
+    Eigen::Matrix3d temp = R.log();
+
+    // cout << " R.log() \n" <<  R.log() << endl;
+    // cout << " unhat(R.log()) \n" <<  unhat(R.log()) << endl;
+    // cout << " unhat(()) \n" <<  unhat((R.log())) << endl;
+    // cout << "R.log xyz" <<  temp(2,1)<< "," <<  temp(0,2)<<"," <<  temp(1,0) << endl;
+    // return unhat(R.log());
+    return unhat(temp);
+
 }   
 
 /**
 * \brief from 3 theta to rotation matrix.
 * \param rpy rotation angle in rad format. .
 */
-Eigen::Vector3d SO3add(const Eigen::Vector3d &x1, const Eigen::Vector3d &x2, bool circle)
+Eigen::Vector3d SO3add(const Eigen::Vector3d x1, const Eigen::Vector3d x2, bool circle)
 {
     if (circle && (x1 + x2).norm() > M_PI)
     {
@@ -57,6 +70,9 @@ Eigen::Vector3d SO3add(const Eigen::Vector3d &x1, const Eigen::Vector3d &x2, boo
     }
     else
     {
+        // cout << " SO3(x1) \n" <<  SO3(x1) << endl;
+        // cout << " SO3(x1) * 2\n " << SO3(x1) * SO3(x2) << endl;
+        // cout << " return  \n " << InvSO3(SO3(x1) * SO3(x2)) << endl;
         return InvSO3(SO3(x1) * SO3(x2));
     }
 }
@@ -112,7 +128,11 @@ Eigen::Quaterniond ToQuaternion(double yaw, double pitch, double roll) // yaw (Z
 }
 
 
-double getVar(cv::Mat& image, int& count_nozero)
+/**
+* \brief .
+* \param type is opencv type CV_float or 
+*/
+double getVar(cv::Mat& image, int& count_nozero, int type)
 {
     // std::cout << image.channels() << std::endl;
     
@@ -126,16 +146,22 @@ double getVar(cv::Mat& image, int& count_nozero)
     // cv::waitKey(0);
 
     assert(image.channels() == 1);
-    assert(image.type() == CV_16UC1);
+    // assert(image.type() == CV_16UC1);
 
     double mean = 0; 
     count_nozero = 1;
     for(int x = 0; x < image.cols; x++)
         for(int y = 0; y < image.rows; y++)
     {
-        if(image.at<unsigned short>(y,x)>0)
+        double value = 1000;
+        if(type == CV_16U)
+            value = image.at<unsigned short>(y,x);
+        if(type == CV_32F)
+            value = image.at<float>(y,x);
+
+        if(value>0)
         {
-            mean += image.at<unsigned short>(y,x); 
+            mean += value; 
             count_nozero++; 
         }
     }
@@ -146,9 +172,15 @@ double getVar(cv::Mat& image, int& count_nozero)
     for(int x = 0; x < image.cols; x++)
     for(int y = 0; y < image.rows; y++)
     {
-        if(image.at<unsigned short>(y,x)>0)
+
+        double value = 1000;
+        if(type == CV_16U)
+            value = image.at<unsigned short>(y,x);
+        if(type == CV_32F)
+            value = image.at<float>(y,x);
+        if(value>0)
         {
-            var += std::pow(image.at<unsigned short>(y,x)-mean,2);
+            var += std::pow(value-mean,2);
         }
     }
     var /= count_nozero;

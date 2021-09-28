@@ -12,7 +12,7 @@ using namespace std;
 cv::Mat System::getWarpedEventImage(const Eigen::Vector3d & cur_ang_vel, EventBundle& event_out,  const PlotOption& option)
 {
     // cout << "get warpped event image " << endl;
-
+    // cout << "eventUndistorted.coord.cols() " << event_undis_Bundle.coord.cols() << endl;
     /* warp local events become sharper */
     event_out.CopySize(event_undis_Bundle);
     getWarpedEventPoints(event_undis_Bundle, event_out, cur_ang_vel); 
@@ -66,8 +66,8 @@ cv::Mat System::getWarpedEventImage(const Eigen::Vector3d & cur_ang_vel, EventBu
 /**
 * \brief given angular veloity, warp local event bundle(t2) to the reference time(t1)
     using kim RAL21, eqation(11), since the ratation angle is ratively small
-* \param cur_ang_vel angleAxis/delta_t from t1->t2, so if it is zero, not shapper operation is done in delta time. 
-* \param cur_ang_pos are set (0,0,0) default, so the output is not rotated. 
+* \param cur_ang_vel angleAxis/delta_t from t2>t1, if add minus, it becomes t1->t2. 
+* \param cur_ang_pos from t2->t0. default set (0,0,0) default, so the output is not rotated. 
 * \param delta_time all events warp this time. 
 */
 void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& eventOut, 
@@ -92,7 +92,7 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
 
 
     eventOut.CopySize(eventIn);
-    if(ang_vel_norm/3.14 * 180 < 0.1) 
+    if(ang_vel_norm < 1e-8) 
     {
         cout << "  small angle vec " << ang_vel_norm/3.14 * 180 << " degree /s" << endl;
         eventOut.coord_3d = eventIn.coord_3d ;
@@ -108,8 +108,8 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
         // else{ cout <<"using not const delta " << delta_time << endl; }
         
         
-        // second order version x_t2 = x_t1 + v_t12 * delta_t * x + second_order;
-        // so x_t1 = x_t2 - v_t12 * delta_t * x 
+        // second order version;
+        // so x_t1 = x_t2*R{t2->t1}. 
         eventOut.coord_3d = eventIn.coord_3d
                                     + Eigen::MatrixXd( 
                                         ang_vel_hat_mul_x.array().rowwise() 
@@ -152,7 +152,7 @@ Eigen::Vector3d System::DeriveErrAnalytic(const Eigen::Vector3d &vel_angleAxis, 
         PlotOption::U16C1_EVNET_IMAGE).convertTo(curr_warpped_event_image, CV_32F);
 
     cv::Mat truncated_image; 
-    int threshold = 10; 
+    int threshold = 5; 
     cv::threshold(curr_warpped_event_image, truncated_image, threshold, 255, cv::THRESH_TRUNC); 
 
     cv::Mat blur_image, Ix, Iy; 
@@ -192,13 +192,13 @@ Eigen::Vector3d System::DeriveErrAnalytic(const Eigen::Vector3d &vel_angleAxis, 
         int x = int(event_warpped_Bundle.coord(0,vec_valid[i])), y = int(event_warpped_Bundle.coord(1,vec_valid[i]));
         _delta_time_valid(i) = eventBundle.time_delta(vec_valid[i]);
         // conversion from float to double
-        Ix_interp(i) = curr_warpped_event_image.at<float>(y,x) * Ix.at<float>(y,x);  
-        Iy_interp(i) = curr_warpped_event_image.at<float>(y,x) * Iy.at<float>(y,x);
+        // Ix_interp(i) = curr_warpped_event_image.at<float>(y,x) * Ix.at<float>(y,x);  
+        // Iy_interp(i) = curr_warpped_event_image.at<float>(y,x) * Iy.at<float>(y,x);
         
-        // Ix_interp(i) = Ix.at<float>(y,x);  
-        // Iy_interp(i) = Iy.at<float>(y,x);
-        // warped_image_delta_t(i) = eventBundle.time_delta(vec_valid[i]) 
-        //                         * curr_warpped_event_image.at<float>(y, x);
+        Ix_interp(i) = Ix.at<float>(y,x);  
+        Iy_interp(i) = Iy.at<float>(y,x);
+        warped_image_delta_t(i) = eventBundle.time_delta(vec_valid[i]) 
+                                * curr_warpped_event_image.at<float>(y, x);
 
         x_z(i) = event_warpped_Bundle.coord_3d(0,vec_valid[i]) / event_warpped_Bundle.coord_3d(2,vec_valid[i]);
         y_z(i) = event_warpped_Bundle.coord_3d(1,vec_valid[i]) / event_warpped_Bundle.coord_3d(2,vec_valid[i]);
@@ -220,20 +220,20 @@ Eigen::Vector3d System::DeriveErrAnalytic(const Eigen::Vector3d &vel_angleAxis, 
 
     // cout << "Ix_interp " << Ix_interp.topRows(5).transpose() << endl;
     // cout << "warped_image_delta_t " << warped_image_delta_t.topRows(5).transpose() << endl;
-    // cout << "eg_jacobian " << eg_jacobian.topLeftCorner(1,5).transpose()  <<endl;
+    // cout << "eg_jacobian " << eg_jacobian.topLeftCorner(1,5) <<endl;
     // cout << "_delta_time " << _delta_time_valid.topRows(5).transpose()  <<endl;
     // cout << "curr_warpped_event_image :\n" << curr_warpped_event_image(cv::Range(100, 110), cv::Range(100, 110)) << endl;
     
     
     Eigen::Vector3d jacobian;
 
-    jacobian(0) = eg_jacobian.row(0) * _delta_time_valid;
-    jacobian(1) = eg_jacobian.row(1) * _delta_time_valid;
-    jacobian(2) = eg_jacobian.row(2) * _delta_time_valid;
+    // jacobian(0) = eg_jacobian.row(0) * _delta_time_valid;
+    // jacobian(1) = eg_jacobian.row(1) * _delta_time_valid;
+    // jacobian(2) = eg_jacobian.row(2) * _delta_time_valid;
 
-    // jacobian(0) = eg_jacobian.row(0) * warped_image_delta_t;
-    // jacobian(1) = eg_jacobian.row(1) * warped_image_delta_t;
-    // jacobian(2) = eg_jacobian.row(2) * warped_image_delta_t;
+    jacobian(0) = eg_jacobian.row(0) * warped_image_delta_t;
+    jacobian(1) = eg_jacobian.row(1) * warped_image_delta_t;
+    jacobian(2) = eg_jacobian.row(2) * warped_image_delta_t;
 
     // cout << "gradient " << jacobian.transpose() << endl;
     return jacobian;
@@ -250,15 +250,15 @@ void System::getTimeResidual(int sampled_x, int sampled_y, double sampled_time, 
     double& residual, double& grad_x, double& grad_y)
 {
     // check 
-    assert(sampled_x>-5);
-    assert(sampled_y>-5);
+    assert(sampled_x>4);
+    assert(sampled_y>4);
     assert(sampled_x<235);
     assert(sampled_y<175);
 
 
     // get specific location for gaussian 8 neighbors are collected 
     Eigen::VectorXd sobel_x(9); sobel_x <<  -1, 0, 1, -2, 0, 2, -1, 0, 1; 
-    Eigen::VectorXd sobel_y(9); sobel_y <<  1, 2, 1, 0, 0, 0, -1, -2, -1; 
+    Eigen::VectorXd sobel_y(9); sobel_y <<   -1, -2, -1, 0, 0, 0,1, 2, 1; 
     Eigen::VectorXd neighbors_9(9);
     Eigen::Matrix<double, 5,5> neighbors_15; 
 
@@ -266,7 +266,7 @@ void System::getTimeResidual(int sampled_x, int sampled_y, double sampled_time, 
     // cout << "sobel_y " << sobel_y.transpose() << endl;
     // cout << "neighbors " << neighbors.transpose() << endl;
 
-    cv::Mat gauss_vec = cv::getGaussianKernel(3, 0.5, CV_64F); 
+    cv::Mat gauss_vec = cv::getGaussianKernel(3, 1, CV_64F); 
     cv::Mat gauss_2d = gauss_vec * gauss_vec.t();
     // cout << "gaussian \n" << gauss_2d << endl;
     Eigen::Matrix3d gauss_2d_eg;
@@ -316,6 +316,9 @@ Eigen::Vector3d System::DeriveTimeErrAnalyticRansac(const Eigen::Vector3d &vel_a
 {
 
     /* using gt  calculate time difference */ 
+    cout << "using DeriveTimeErrAnalyticRansac " << vel_angleAxis.transpose() 
+            << " time " << warp_time << endl;
+
     getWarpedEventPoints(event_undis_Bundle, event_warpped_Bundle, vel_angleAxis, Eigen::Vector3d::Zero(), warp_time);
     event_warpped_Bundle.Projection(camera.eg_cameraMatrix);
     event_warpped_Bundle.DiscriminateInner(camera.width-4, camera.height-4);
@@ -332,9 +335,12 @@ Eigen::Vector3d System::DeriveTimeErrAnalyticRansac(const Eigen::Vector3d &vel_a
         double sampled_time = eventBundle.time_delta(idx);
         // cout << "sampled_time " << sampled_time <<", x, y" << x << "," << y << endl;
 
-        if(event_warpped_Bundle.isInner(idx) < 1) continue;
-        if(sampled_x >= 240  ||  sampled_x < 0 || sampled_y >= 180 || sampled_y < 0 ) 
-            cout << "x, y" << sampled_x << "," << sampled_y << endl;
+        // if(event_warpped_Bundle.isInner(idx) < 1) continue;
+        if(sampled_x >= 235  ||  sampled_x < 5 || sampled_y >= 175 || sampled_y < 5 ) 
+        {
+            // cout << "warning DeriveTimeErrAnalyticRansac x, y" << sampled_x << "," << sampled_y << endl;
+            continue; 
+        }
 
         vec_sampled_idx_valid.push_back(idx);
 
@@ -348,6 +354,29 @@ Eigen::Vector3d System::DeriveTimeErrAnalyticRansac(const Eigen::Vector3d &vel_a
 
         total_residual += curr_t_residual;
     }
+
+    // cout << "vec_residual[i] ";
+    // for(int i=0; i<5; i++ )
+    // {
+    //     cout << " " << vec_residual[i];
+    // }
+    // cout << endl;
+
+    // cout << "vec_Ix_interp[i] " ;
+    // for(int i=0; i<5; i++ )
+    // {
+    //     cout << " " << vec_Ix_interp[i];
+    // }
+    // cout << endl;
+    
+    // cout << "vec_Iy_interp[i] " ;
+    // for(int i=0; i<5; i++ )
+    // {
+    //     cout << " " << vec_Iy_interp[i];
+    // }
+    // cout << endl;
+
+
 
     double grad_x_sum = std::accumulate(vec_Ix_interp.begin(), vec_Ix_interp.end(),0);
     double grad_y_sum = std::accumulate(vec_Iy_interp.begin(), vec_Iy_interp.end(),0);
@@ -373,6 +402,8 @@ Eigen::Vector3d System::DeriveTimeErrAnalyticRansac(const Eigen::Vector3d &vel_a
         y_z(i) = event_warpped_Bundle.coord_3d(1,vec_sampled_idx_valid[i]) / event_warpped_Bundle.coord_3d(2,vec_sampled_idx_valid[i]);
     }
 
+    // cout << "Ix_interp " << Ix_interp.topLeftCorner(1,5) << endl;
+    // cout << "Iy_interp " << Iy_interp.topLeftCorner(1,5) << endl;
     
     eg_jacobian.row(0) = -Ix_interp.array()*x_z.array()*y_z.array() 
                         - Iy_interp.array()*(1+y_z.array()*y_z.array());
@@ -383,11 +414,15 @@ Eigen::Vector3d System::DeriveTimeErrAnalyticRansac(const Eigen::Vector3d &vel_a
     eg_jacobian.row(2) = -Ix_interp.array()*y_z.array() 
                         + Iy_interp.array()*x_z.array();    
     
+    // cout << "eg_jacobian " << eg_jacobian.topLeftCorner(3,5) << endl;
     
+
     Eigen::Vector3d jacobian;
-    jacobian(0) = eg_jacobian.row(0) * Eigen::VectorXd::Ones(valid_size);
-    jacobian(1) = eg_jacobian.row(1) * Eigen::VectorXd::Ones(valid_size);
-    jacobian(2) = eg_jacobian.row(2) * Eigen::VectorXd::Ones(valid_size);
+    jacobian(0) = 10* eg_jacobian.row(0) * Eigen::VectorXd::Ones(valid_size);
+    jacobian(1) = 10* eg_jacobian.row(1) * Eigen::VectorXd::Ones(valid_size);
+    jacobian(2) = 10* eg_jacobian.row(2) * Eigen::VectorXd::Ones(valid_size);
+
+    // cout << "jacobian " << jacobian.transpose() << endl;
 
     return jacobian;
 }
@@ -400,6 +435,9 @@ Eigen::Vector3d System::DeriveTimeErrAnalyticRansac(const Eigen::Vector3d &vel_a
 Eigen::Vector3d System::DeriveTimeErrAnalyticLayer(const Eigen::Vector3d &vel_angleAxis, 
     const std::vector<int>& vec_sampled_idx, double warp_time, double& total_residual)
 {
+
+    cout << "using DeriveTimeErrAnalyticLayer " << vel_angleAxis.transpose() 
+            << " time " << warp_time << endl;
 
     // using gradient of time residual get warpped time surface
     cv::Mat cv_warped_timesurface = cv::Mat(180,240, CV_32FC1);
@@ -472,6 +510,30 @@ Eigen::Vector3d System::DeriveTimeErrAnalyticLayer(const Eigen::Vector3d &vel_an
         total_residual += curr_t_residual;
     }
 
+
+    cout << "vec_residual[i] ";
+    for(int i=0; i<5; i++ )
+    {
+        cout << " " << vec_residual[i];
+    }
+    cout << endl;
+
+    cout << "vec_Ix_interp[i] " ;
+    for(int i=0; i<5; i++ )
+    {
+        cout << " " << vec_Ix_interp[i];
+    }
+    cout << endl;
+    
+    cout << "vec_Iy_interp[i] " ;
+    for(int i=0; i<5; i++ )
+    {
+        cout << " " << vec_Iy_interp[i];
+    }
+    cout << endl;
+
+
+
     double grad_x_sum = std::accumulate(vec_Ix_interp.begin(), vec_Ix_interp.end(),0);
     double grad_y_sum = std::accumulate(vec_Iy_interp.begin(), vec_Iy_interp.end(),0);
     // cout << "grad_x_sum, grad_y_sum " << grad_x_sum << "," << grad_y_sum << endl; 
@@ -499,6 +561,9 @@ Eigen::Vector3d System::DeriveTimeErrAnalyticLayer(const Eigen::Vector3d &vel_an
 
     }
 
+    cout << "Ix_interp " << Ix_interp.topLeftCorner(1,5) << endl;
+    cout << "Iy_interp " << Iy_interp.topLeftCorner(1,5) << endl;
+
     
     eg_jacobian.row(0) = -Ix_interp.array()*x_z.array()*y_z.array() 
                         - Iy_interp.array()*(1+y_z.array()*y_z.array());
@@ -509,11 +574,15 @@ Eigen::Vector3d System::DeriveTimeErrAnalyticLayer(const Eigen::Vector3d &vel_an
     eg_jacobian.row(2) = -Ix_interp.array()*y_z.array() 
                         + Iy_interp.array()*x_z.array();    
     
+    cout << "eg_jacobian " << eg_jacobian.topLeftCorner(3,5) << endl;
+    
     
     Eigen::Vector3d jacobian;
     jacobian(0) = eg_jacobian.row(0) * Eigen::VectorXd::Ones(valid_size);
     jacobian(1) = eg_jacobian.row(1) * Eigen::VectorXd::Ones(valid_size);
     jacobian(2) = eg_jacobian.row(2) * Eigen::VectorXd::Ones(valid_size);
+
+    cout << "jacobian " << jacobian.transpose() << endl;
 
     return jacobian;
 }
@@ -530,10 +599,7 @@ void System::EstimateMotion_ransca_once(double sample_ratio, double warp_time_ra
     // warp events and get a timesurface image with indexs 
     cv::Mat cv_timesurface; 
     cv_timesurface = getImageFromBundle(event_undis_Bundle, PlotOption::TIME_SURFACE);  
-    // cv::Mat hot_image for visualization ;
     cv::normalize(cv_timesurface, hot_image_C1, 0,255, cv::NORM_MINMAX, CV_8UC1);
-    // cv::applyColorMap(hot_image_C1, hot_image_C3, cv::COLORMAP_JET);
-    // cv::cvtColor(hot_image, hot_image, cv::COLOR_BGR2GRAY);
     cv::cvtColor(hot_image_C1, hot_image_C3, cv::COLOR_GRAY2BGR);
 
     // select 100 random points, and warp delta_t < min(t_point_delta_t). 
@@ -541,64 +607,57 @@ void System::EstimateMotion_ransca_once(double sample_ratio, double warp_time_ra
     std::vector<int> vec_sampled_idx;
     cv::RNG rng(int(ros::Time::now().nsec));
     int samples_count = std::min(1000,int(event_undis_Bundle.coord.cols()/2));
-    int sample_green = 2;
-    for(int i=0; i< samples_count; i++)
+
+    // get samples 
+    for(int i=0; i< samples_count;)
     {
         int sample_idx = rng.uniform(int(event_undis_Bundle.coord.cols()*sample_ratio), event_undis_Bundle.coord.cols());
-        vec_sampled_idx.push_back(sample_idx);
-        // if(i<10) cout << "sampling " << sample_idx << endl;
 
-        // viusal sample 
-        if(i%sample_green != 0) continue;
-        int x = int(event_undis_Bundle.coord(0, sample_idx));
-        int y = int(event_undis_Bundle.coord(1, sample_idx));
-        hot_image_C3.at<cv::Vec3b>(y,x) = cv::Vec3b(0,255,0);   // green of original 
+        // check valid 8 neighbor hood existed 
+        int sampled_x = event_undis_Bundle.coord.col(sample_idx)[0];
+        int sampled_y = event_undis_Bundle.coord.col(sample_idx)[1];
+        if(sampled_x >= 239  ||  sampled_x < 1 || sampled_y >= 179 || sampled_y < 1 ) 
+        {
+            // cout << "x, y" << sampled_x << "," << sampled_y << endl;
+            continue;
+        }
 
+        int count = 0;
+        for(int j=-1; j<2; j++)
+            for(int k=-1; k<2; k++)
+            {
+                count += (  curr_undis_event_image.at<cv::Vec3f>(sampled_y+j,sampled_x+k)[0] + 
+                            curr_undis_event_image.at<cv::Vec3f>(sampled_y+j,sampled_x+k)[1] +
+                            curr_undis_event_image.at<cv::Vec3f>(sampled_y+j,sampled_x+k)[2] ) > 0;
+            }
+
+        // cout << "x, y " << count << curr_undis_event_image.at<cv::Vec3f>(sampled_y,sampled_x) << endl;
+        // valid 
+        if(count > 7)
+        {
+            vec_sampled_idx.push_back(sample_idx);
+            i++;
+        }
     }
     
-    // warp time range  
+    // get warp time range  
     std::vector<double>  vec_sampled_time;
     for(const int& i: vec_sampled_idx)
         vec_sampled_time.push_back(eventBundle.time_delta(i));
 
     double delta_time_range = *(std::min_element(vec_sampled_time.begin(), vec_sampled_time.end()));
     double warp_time = delta_time_range * warp_time_ratio; 
-    cout <<"sample count " << samples_count<< ", delta_time_range " << delta_time_range << "， warp_time " << warp_time <<endl;
+    cout <<"sample count " << samples_count << ", delta_time_range " << delta_time_range << "， warp_time " << warp_time <<endl;
 
     // otimizing paramter init
-        int max_iter_count = 10;
+        int max_iter_count = 30;
         // velocity optimize steps and smooth factor
-        double mu_event = opti_steps, nu_event = 0.9;
+        double mu_event = opti_steps, nu_event = 1;
         Eigen::Vector3d adam_v(0,0,0); 
 
         double rho_event = 0.9, nu_map = 1;
         Eigen::Vector3d angular_velocity_compensator(0,0,0), angular_position_compensator(0,0,0);
         // est_angleAxis = Eigen::Vector3d(0,0,0); // set to 0. 
-
-    // compare with gt 
-    double gt_residual = 0;
-    int gt_nonzero = 0; 
-    // DeriveTimeErrAnalyticLayer(gt_angleAxis, vec_sampled_idx, warp_time, gt_residual);
-    // cout << "DeriveTimeErrAnalyticLayer " << gt_residual << endl;
-    DeriveTimeErrAnalyticRansac(gt_angleAxis, vec_sampled_idx, warp_time, gt_residual);
-    cout << "DeriveTimeErrAnalyticRansca " << gt_residual << endl;
-    getWarpedEventImage(gt_angleAxis, event_warpped_Bundle_gt).convertTo(curr_warpped_event_image_gt, CV_32F);
-    cv::Mat curr_warpped_event_image_gt_C1 = getWarpedEventImage(gt_angleAxis, event_warpped_Bundle_gt, PlotOption::U16C1_EVNET_IMAGE);
-    cout << "var of gt " << getVar(curr_warpped_event_image_gt_C1, gt_nonzero) <<" non_zero "<< gt_nonzero <<  endl;
-    
-    // visualize gt blue points
-    int sample_blue = 2;
-    for(int i=0; i<vec_sampled_idx.size(); i++)
-    {
-         // viusal sample 
-        if(i%sample_blue != 0) continue;
-
-        int x = int(event_warpped_Bundle_gt.coord(0, vec_sampled_idx[i]));
-        int y = int(event_warpped_Bundle_gt.coord(1, vec_sampled_idx[i]));
-        if(x>239 || y>179 || x<0 ||y<0) continue;
-        hot_image_C3.at<cv::Vec3b>(y,x) = cv::Vec3b(255,0,0);   // blue of warpped 
-        // cout << "all inlier blue" << endl;
-    }
 
     double residuals = 0, pre_residual = 10; 
     for(int i=0; i< max_iter_count; i++)
@@ -606,8 +665,8 @@ void System::EstimateMotion_ransca_once(double sample_ratio, double warp_time_ra
     {
         pre_residual = residuals;
         // compute jacobian 
-        Eigen::Vector3d jacobian = DeriveTimeErrAnalyticLayer(est_angleAxis, vec_sampled_idx, warp_time, residuals);
-        // Eigen::Vector3d jacobian = DeriveTimeErrAnalyticRansac(est_angleAxis, vec_sampled_idx, warp_time, residuals);
+        // Eigen::Vector3d jacobian = DeriveTimeErrAnalyticLayer(est_angleAxis, vec_sampled_idx, warp_time, residuals);
+        Eigen::Vector3d jacobian = DeriveTimeErrAnalyticRansac(est_angleAxis, vec_sampled_idx, warp_time, residuals);
 
         // smooth factor, RMS Prob 
             double temp_jaco = jacobian.transpose()*jacobian; 
@@ -620,19 +679,31 @@ void System::EstimateMotion_ransca_once(double sample_ratio, double warp_time_ra
             // angular_velocity_compensator = - mu_event / std::sqrt(nu_event) * adam_v;
 
         // est_angleAxis = SO3add(angular_velocity_compensator,est_angleAxis , true); 
-        // est_angleAxis = SO3add(angular_velocity_compensator, est_angleAxis, true); 
-        est_angleAxis = est_angleAxis.array() + angular_velocity_compensator.array(); 
+        est_angleAxis = SO3add(angular_velocity_compensator, est_angleAxis, true); 
+        // est_angleAxis = est_angleAxis.array() + angular_velocity_compensator.array(); 
 
-        getWarpedEventImage(est_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32F);
+        getWarpedEventImage(est_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);
         cv::imshow("opti", curr_warpped_event_image);
-        cv::waitKey(100);
+        cv::waitKey(10);
 
         cout << "iter " << i <<", nu_event " << std::sqrt(nu_event) << endl;
         // cout << "  jacobian " << jacobian.transpose() << endl;
         cout << "  compensator   " << angular_velocity_compensator.transpose() << endl;
         cv::Mat curr_warpped_event_image_c1 = getWarpedEventImage(est_angleAxis, event_warpped_Bundle, PlotOption::U16C1_EVNET_IMAGE);
         int est_nonzero = 0;
-        cout << "  residuals " << residuals << ", var of est " << getVar(curr_warpped_event_image_c1, est_nonzero) <<" non_zero " <<est_nonzero <<  endl;
+        cout << "  residuals " << residuals << ", var of est " << getVar(curr_warpped_event_image_c1, est_nonzero, CV_16U) <<" non_zero " <<est_nonzero <<  endl;
+    }
+
+    int sample_green = 2;
+    for(int i=0; i<vec_sampled_idx.size() ; i++)
+    {
+        // if(i<10) cout << "sampling " << sample_idx << endl;
+
+        // viusal sample 
+        if(i%sample_green != 0) continue;
+        int x = int(event_undis_Bundle.coord(0, vec_sampled_idx[i]));
+        int y = int(event_undis_Bundle.coord(1, vec_sampled_idx[i]));
+        hot_image_C3.at<cv::Vec3b>(y,x) = cv::Vec3b(0,255,0);   // green of original 
 
     }
 
@@ -644,17 +715,45 @@ void System::EstimateMotion_ransca_once(double sample_ratio, double warp_time_ra
         if(i%sample_red != 0) continue;
         int x = int(event_warpped_Bundle.coord(0, vec_sampled_idx[i])); 
         int y = int(event_warpped_Bundle.coord(1, vec_sampled_idx[i]));
-        hot_image_C3.at<cv::Vec3b>(y,x) = cv::Vec3b(0,0,255);   // red of warpped 
         if(x>239 || y>179 || x<0 ||y<0) continue;
+        hot_image_C3.at<cv::Vec3b>(y,x) = cv::Vec3b(0,0,255);   // red of warpped 
         // cout << "all inlier red" << endl;
     }
 
     // compare with gt
-    cout << "estimated angleAxis " <<  est_angleAxis.transpose() << endl;
-    cout << "gt angleAxis        " << gt_angleAxis.transpose() << endl;
-    cout << "gt residuals " << gt_residual << " var of gt " << getVar(curr_warpped_event_image_gt_C1, gt_nonzero) <<" non_zero " << gt_nonzero <<  endl;
-    
+    cout << "estimated angleAxis " <<  est_angleAxis.transpose() << endl;   
     cout <<"count "<<eventBundle.coord.cols() << " sample count " << samples_count<< ", delta_time_range " << delta_time_range << "， warp_time " << warp_time <<endl;
+    
+    // compare with gt 
+    if(using_gt)
+    {
+        double gt_residual = 0;
+        int gt_nonzero = 0; 
+        // DeriveTimeErrAnalyticLayer(gt_angleAxis, vec_sampled_idx, warp_time, gt_residual);
+        // cout << "DeriveTimeErrAnalyticLayer " << gt_residual << endl;
+        DeriveTimeErrAnalyticRansac(gt_angleAxis, vec_sampled_idx, warp_time, gt_residual);
+        cout << "DeriveTimeErrAnalyticRansca " << gt_residual << endl;
+        getWarpedEventImage(gt_angleAxis, event_warpped_Bundle_gt).convertTo(curr_warpped_event_image_gt, CV_32F);
+        cv::Mat curr_warpped_event_image_gt_C1 = getWarpedEventImage(gt_angleAxis, event_warpped_Bundle_gt, PlotOption::U16C1_EVNET_IMAGE);
+        cout << "var of gt " << getVar(curr_warpped_event_image_gt_C1, gt_nonzero, CV_16U) <<" non_zero "<< gt_nonzero <<  endl;
+    
+        // visualize gt blue points
+        int sample_blue = 2;
+        for(int i=0; i<vec_sampled_idx.size(); i++)
+        {
+            // viusal sample 
+            if(i%sample_blue != 0) continue;
+
+            int x = int(event_warpped_Bundle_gt.coord(0, vec_sampled_idx[i]));
+            int y = int(event_warpped_Bundle_gt.coord(1, vec_sampled_idx[i]));
+            if(x>239 || y>179 || x<0 ||y<0) continue;
+            hot_image_C3.at<cv::Vec3b>(y,x) = cv::Vec3b(255,0,0);   // blue of warpped 
+            // cout << "all inlier blue" << endl;
+        }
+        cout << "gt angleAxis  " << gt_angleAxis.transpose() << endl;
+        cout << "gt residuals " << gt_residual << " var of gt " << getVar(curr_warpped_event_image_gt_C1, gt_nonzero, CV_16U) <<" non_zero " << gt_nonzero <<  endl;
+    }
+
 
 }
 
@@ -666,15 +765,16 @@ void System::EstimateMotion_kim()
     // paramters 
     int max_iter_count = 65;
         // velocity optimize steps and smooth factor
-        double mu_event = 0.01, nu_event = 1; 
-        double rho_event = 0.995, nu_map = 1;
+        double mu_event = 0.05, nu_event = 1; 
+        double rho_event = 0.995;
         // position 
-        double mu_map = 0.05;
+        double mu_map = 0.05, nu_map = 1;
 
 
     Eigen::Vector3d angular_velocity_compensator(0,0,0), angular_position_compensator(0,0,0);
     est_angleAxis = Eigen::Vector3d(0,0,0); // set to 0. 
 
+    int output_sample = 10;
     for(int i=0; i< max_iter_count; i++)
     {
         // compute jacobian 
@@ -682,24 +782,35 @@ void System::EstimateMotion_kim()
         // smooth factor
         double temp_jaco = jacobian.transpose()*jacobian; 
         nu_event =  temp_jaco*(1.0 - rho_event) + rho_event * nu_event;
-        // update velocity TODO minus gradient ?? 
-        angular_velocity_compensator =  mu_event / std::sqrt(nu_event) * jacobian;
-        // est_angleAxis = SO3add(angular_velocity_compensator,est_angleAxis , true); 
-        est_angleAxis = SO3add(est_angleAxis, angular_velocity_compensator, true); 
+        // update velocity from t2->t1.  
+        angular_velocity_compensator = mu_event / std::sqrt(nu_event + 1e-8) * jacobian;
+        // est_angleAxis = SO3add(angular_velocity_compensator,est_angleAxis , true);
+        est_angleAxis = SO3add(angular_velocity_compensator, est_angleAxis , true); 
+        
+        // visualize
+        // getWarpedEventImage(est_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32F);
+        // cv::imshow("opti", curr_warpped_event_image);
+        // cv::waitKey(10);
+        // break;
 
-        getWarpedEventImage(est_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32F);
-        cv::imshow("opti", curr_warpped_event_image);
-        cv::waitKey(100);
-
-        cout << "iter " << i <<", scale " << mu_event / std::sqrt(nu_event) << endl;
-        // cout << "  jacobian " << jacobian.transpose() << endl;
-        cout << "  compensator   " << angular_velocity_compensator.transpose() << endl;
-        int non_zero = 0;
-        cout << "  var of est " << getVar(curr_warpped_event_image, non_zero) <<" non_zero " << non_zero <<  endl;
+        if(false && i % output_sample == 0)
+        {
+            cout << "iter " << i <<", scale " << mu_event / std::sqrt(nu_event) << endl;
+            // cout << "  jacobian " << jacobian.transpose() << endl;
+            cout << "  compensator   " << angular_velocity_compensator.transpose() << endl;
+            int non_zero = 0;
+            cout << "  var of est " << getVar(curr_warpped_event_image, non_zero, CV_32F) <<" non_zero " << non_zero <<  endl;
+            
+        }
     }
 
+    // getWarpedEventImage(est_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32F);
+    // // cv::normalize(curr_warpped_event_image, curr_warpped_event_image, 0, 255, cv::NORM_MINMAX, CV_8UC3);
+    // cv::imshow("opti", curr_warpped_event_image/3);
+    // cv::waitKey(10);
+
     cout << "estimated angleAxis " <<  est_angleAxis.transpose() << endl;
-    cout << "gt angleAxis        " << gt_angleAxis.transpose() << endl;
+    cout << "gt angleAxis   " << gt_angleAxis.transpose() << endl;
 
 } 
 

@@ -5,7 +5,11 @@ ros::Time begin_time = ros::Time(0);
 
 void ImageGrabber::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 {
-    if(begin_time == ros::Time(0))  begin_time =  msg->header.stamp; 
+    if(begin_time == ros::Time(0))
+    {
+        begin_time =  msg->header.stamp; 
+        system->setBeginTime(msg->header.stamp);
+    } 
 
     static int last_img_seq = msg->header.seq; 
 
@@ -33,7 +37,14 @@ void ImageGrabber::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 
 void EventGrabber::GrabEvent(const dvs_msgs::EventArrayConstPtr& msg) 
 {
-    if(begin_time == ros::Time(0))  begin_time = msg->events[0].ts; 
+    if(msg->events.empty()) return; 
+
+    if(begin_time == ros::Time(0)) 
+    {
+        begin_time = msg->events[0].ts; 
+        system->setBeginTime(msg->events[0].ts);
+    }
+
 
     // not need to copy eventdata obj
     // EventData eventdata; 
@@ -51,7 +62,12 @@ void EventGrabber::GrabEvent(const dvs_msgs::EventArrayConstPtr& msg)
 
 void PoseGrabber::GrabPose(const geometry_msgs::PoseStampedConstPtr& msg)
 {
-    if(begin_time == ros::Time(0))  begin_time =  msg->header.stamp; 
+
+    if(begin_time == ros::Time(0))
+    {
+        begin_time =  msg->header.stamp; 
+        system->setBeginTime(msg->header.stamp);
+    } 
     
     // not need to copy eventdata obj
     PoseData poseData; 
