@@ -35,11 +35,11 @@ struct ImageData
 
 struct PoseData
 {
-    double time_stamp; 
-    ros::Time time_stamp_ros;
+    double time_stamp;          // starts from 0s
+    ros::Time time_stamp_ros;   // ros time 
     uint32_t seq;
-    Eigen::Quaterniond quat; 
-    Eigen::Vector3d pose; 
+    Eigen::Quaterniond quat;    // quanterion
+    Eigen::Vector3d pose;       // xyz
 };
 
 struct CameraPara

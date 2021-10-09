@@ -81,8 +81,65 @@ void PoseGrabber::GrabPose(const geometry_msgs::PoseStampedConstPtr& msg)
     poseData.quat = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x,
                 msg->pose.orientation.y, msg->pose.orientation.z);
     
-    // cout<<"receiving poses t: " << poseData.time_stamp << "， ros: " << std::to_string(poseData.time_stamp_ros.toSec()) << endl;
-    // cout << "----(xyz)(wxyz)" << poseData.pose.transpose() <<  poseData.quat.coeffs().transpose() << endl;
+    cout<<"receiving poses t: " << poseData.time_stamp << "， ros: " << std::to_string(poseData.time_stamp_ros.toSec()) << endl;
+    cout << "----(xyz)(wxyz)" << poseData.pose.transpose() <<  poseData.quat.coeffs().transpose() << endl;
 
-    system->pushPoseData(poseData);
+
+    if(que_last_poseData.size() < 10)
+    {
+        que_last_poseData.push(poseData);
+    }
+    else
+    {
+        PoseData last_poseData = que_last_poseData.front(); 
+        que_last_poseData.pop(); 
+        
+        Eigen::Quaterniond t1_t2 =  last_poseData.quat.inverse() * poseData.quat;
+        // last_poseData.quat.angularDistance(poseData.quat);
+
+        Eigen::Vector3d velocity =  toEulerAngles(t1_t2) * 1 / (poseData.time_stamp_ros - last_poseData.time_stamp_ros).toSec();
+        
+        // get middle timestamp of event bundle 
+        uint32_t second = last_poseData.time_stamp_ros.sec;
+        uint32_t nsecond;
+        if(last_poseData.time_stamp_ros.nsec > poseData.time_stamp_ros.nsec)
+        {
+            // example: first 1.12, last 1.15;
+            nsecond = last_poseData.time_stamp_ros.nsec +  (poseData.time_stamp_ros.nsec-last_poseData.time_stamp_ros.nsec)/2;
+        }
+        else
+        {
+            uint32_t delta_to_second =  uint32_t(1000000000) - last_poseData.time_stamp_ros.nsec;
+            // example: first 1.96, last 1.01;
+            if(delta_to_second > poseData.time_stamp_ros.nsec)
+            {
+                nsecond = last_poseData.time_stamp_ros.nsec + (delta_to_second+poseData.time_stamp_ros.nsec) / 2;
+            }
+            // example: first 1.99, last 1.02;
+            else
+            {
+                nsecond = (poseData.time_stamp_ros.nsec - delta_to_second) / 2;
+                second++;
+            }
+        }
+
+        gt_velocity_file << poseData.time_stamp_ros.sec << " " << poseData.time_stamp_ros.nsec <<" " << velocity.transpose() << endl;
+
+        // evo part
+        // // todo from quat to agnles axis and divide by time, get velocity
+        // Eigen::AngleAxisd angle_axis =  Eigen::AngleAxisd(t1_t2);
+        // // cout << "angle axis " << angle_axis.axis() << "," << angle_axis.angle() << endl;
+        // angle_axis.angle() = angle_axis.angle() /  (poseData.time_stamp_ros - last_poseData.time_stamp_ros).toSec();
+        // // cout << "angle axis " << angle_axis.axis() << "," << angle_axis.angle() << endl;
+        // Eigen::Quaterniond q = Eigen::Quaterniond(angle_axis);
+        
+        // gt_velocity_file_quat << poseData.time_stamp_ros << " 0 0 0 " << q.x() << " "
+        // << q.y() << " "  << q.z() << " " << q.w() << endl;
+
+        last_poseData = poseData;
+        que_last_poseData.push(poseData);
+    }
+
+
+    // system->pushPoseData(poseData);
 }

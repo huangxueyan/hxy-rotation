@@ -20,7 +20,7 @@ System::System(const string& yaml)
                 cv::Mat::eye(3,3,CV_32FC1), camera.cameraMatrix, cv::Size(camera.width, camera.height), 
                 CV_32FC1, undist_mesh_x, undist_mesh_y);
 
-    using_gt = true;
+    using_gt = false;
     vec_vec_eventData_iter = 0;
 
     // ros msg 
@@ -33,9 +33,9 @@ System::System(const string& yaml)
     // cv::namedWindow("curr_event_image", cv::WINDOW_NORMAL);
 
     // after processing 
-    // cv::namedWindow("curr_undis_event_image", cv::WINDOW_NORMAL);
+    cv::namedWindow("curr_undis_event_image", cv::WINDOW_NORMAL);
     cv::namedWindow("curr_warpped_event_image", cv::WINDOW_NORMAL);
-    cv::namedWindow("curr_warpped_event_image_gt", cv::WINDOW_NORMAL);
+    // cv::namedWindow("curr_warpped_event_image_gt", cv::WINDOW_NORMAL);
     // cv::namedWindow("curr_map_image", cv::WINDOW_NORMAL);
      cv::namedWindow("hot_image_C3", cv::WINDOW_NORMAL);
      cv::namedWindow("opti", cv::WINDOW_NORMAL);
@@ -48,6 +48,7 @@ System::System(const string& yaml)
     hot_image_C3 = cv::Mat(camera.height,camera.width, CV_8UC3);
 
     // optimizeing 
+    est_angleAxis = Eigen::Vector3d(0,0,0); // set to 0. 
     int dims[] = {180,240,20};   // row, col, channels
     cv_3D_surface_index = cv::Mat(3, dims, CV_32S);
     cv_3D_surface_index_count = cv::Mat(180, 240, CV_32S);
@@ -59,9 +60,9 @@ System::System(const string& yaml)
     curr_warpped_event_image_gt = cv::Mat(camera.height,camera.width, CV_32F); 
 
     // output file 
-    gt_theta_file = fstream("/home/hxt/Desktop/hxy-rotation/data/saved_gt_theta.txt", ios::out);
-    gt_velocity_file = fstream("/home/hxt/Desktop/hxy-rotation/data/saved_gt_theta_velocity.txt", ios::out);
     est_velocity_file = fstream("/home/hxt/Desktop/hxy-rotation/data/ransac_velocity.txt", ios::out);
+    // est_velocity_file_quat = fstream("/home/hxt/Desktop/hxy-rotation/data/evo_data/ransac_velocity.txt", ios::out);
+
 
     // thread in background 
     // thread_view = new thread(&System::visualize, this);
@@ -76,10 +77,9 @@ System::~System()
 
     // delete thread_run; 
     cv::destroyAllWindows();
-    gt_theta_file.close();
-    gt_velocity_file.close();
 
     est_velocity_file.close(); 
+    // est_velocity_file_quat.close();
 
 }
 
@@ -91,7 +91,7 @@ System::~System()
 void System::undistortEvents()
 {
     int point_size = eventBundle.size;
-    cout << "------undisotrt events num:" << point_size <<  endl;
+    // cout << "------unditort events num:" << point_size <<  endl;
     // cout << "------undisotrt eventBundle cols " << eventBundle.coord.rows() << "," << eventBundle.coord.cols()  <<  endl;
     
     vector<cv::Point2f> raw_event_points(point_size), undis_event_points(point_size);
@@ -125,7 +125,7 @@ void System::undistortEvents()
     event_undis_Bundle.DiscriminateInner(camera.width, camera.height);
 
     getImageFromBundle(event_undis_Bundle, PlotOption::U16C3_EVNET_IMAGE_COLOR, false).convertTo(curr_undis_event_image, CV_32F);
-    cout << "success undistort events " << endl;
+    // cout << "success undistort events " << endl;
 }
 
 
@@ -320,7 +320,7 @@ void System::Run()
 
     // check current eventsize or event interval 
     double time_interval = (eventBundle.last_tstamp-eventBundle.first_tstamp).toSec();
-    if(time_interval < 0.01 || eventBundle.size < 500)
+    if(time_interval < 0.005 || eventBundle.size < 500)
     {
         cout << "no enough interval or num: " <<time_interval << ", "<< eventBundle.size << endl;
         return; 
@@ -328,8 +328,8 @@ void System::Run()
 
 
 
-    cout << "----processing event bundle------ size: " <<eventBundle.size  << 
-        ", vec leave:" <<vec_vec_eventData.size() - vec_vec_eventData_iter << endl; 
+    // cout << "----processing event bundle------ size: " <<eventBundle.size  << 
+        // ", vec leave:" <<vec_vec_eventData.size() - vec_vec_eventData_iter << endl; 
 
     /* undistort events */ 
     undistortEvents();
@@ -354,31 +354,31 @@ void System::Run()
     }
 
     /* get local bundle sharper using self derived iteration CM method */ 
-    // EstimateMotion_kim();
-    // getWarpedEventImage(est_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32F);
+    EstimateMotion_kim();
 
-    /* get local bundle sharper using time residual */
-    est_angleAxis = Eigen::Vector3d(0,0,0); // set to 0. 
+    /* get local bundle sharper using time residual, all warp to t0 */
+    // est_angleAxis = Eigen::Vector3d(0,0,0); // set to 0. 
     // cv::waitKey(0);
-    EstimateMotion_ransca_once(0.95, 1, 0.05);
-    // cv::waitKey(0);
-    // EstimateMotion_ransca_once(0.95, 1, 0.05);
-    // cv::waitKey(0);
-    // EstimateMotion_ransca_once(0.95, 1, 0.05);
-    // cv::waitKey(0);
-    // EstimateMotion_ransca_once(0.95, 1, 0.05);
+    // EstimateMotion_ransca_warp2bottom(0.2, 0.99, 0.05);
+    // // cv::waitKey(0);
+    // EstimateMotion_ransca_warp2bottom(0.2, 0.99, 0.05);
+    // // cv::waitKey(0);
 
-    // EstimateMotion_ransca_once(0.9, 0.7, 0.05  );
+    // samples 
+    // EstimateMotion_ransca_warp2bottom(0.9, 0.99, 0.05);
+    // cv::waitKey(0);    
+    // EstimateMotion_ransca_warp2bottom(0.4, 0.5, 0.05);
     // cv::waitKey(0);
-    // EstimateMotion_ransca_once(0.9, 1,   0.05);
+    // EstimateMotion_ransca_warp2bottom(0.5, 0.6, 0.05);
     // cv::waitKey(0);
-    // EstimateMotion_ransca_once(0.7, 1,   0.05);
+    // EstimateMotion_ransca_warp2bottom(0.6, 0.7, 0.05);
     // cv::waitKey(0);
-    // EstimateMotion_ransca_once(0.7, 1,   0.01);
+    // EstimateMotion_ransca_warp2bottom(0.7, 0.8, 0.05);
     // cv::waitKey(0);
-
-
-    getWarpedEventImage(est_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32F);
+    // EstimateMotion_ransca_warp2bottom(0.8, 0.9, 0.01);
+    // cv::waitKey(0);
+    // EstimateMotion_ransca_warp2bottom(0.9, 0.99, 0.01);
+    // cv::waitKey(0);
 
 
     // save gt date 
@@ -408,13 +408,22 @@ void System::save_velocity()
     double timestamp =  (eventBundle.last_tstamp - beginTS).toSec();
     double delta_time = (eventBundle.last_tstamp - eventBundle.first_tstamp).toSec(); 
 
-    double angle = (est_angleAxis * delta_time).norm();
-    Eigen::AngleAxisd ag_pos =  Eigen::AngleAxisd(angle, - (est_angleAxis * delta_time) / angle);
-    Eigen::Quaterniond q = Eigen::Quaterniond(ag_pos);
-
     // minus means from t1->t2. 
-    Eigen::Vector3d euler_position = - toEulerAngles(q) / delta_time; // back to velocity
-    est_velocity_file << timestamp <<" " << euler_position.transpose() << endl;
+    double angle = (est_angleAxis * delta_time).norm();
+    Eigen::AngleAxisd ag_pos =  Eigen::AngleAxisd(angle, (est_angleAxis * delta_time) / angle);
+    Eigen::Quaterniond q = Eigen::Quaterniond(ag_pos);
+    Eigen::Vector3d euler_position = toEulerAngles(q) / delta_time; // back to velocity
+    
+    // get middle timestamp of event bundle, wrong, because we warp to t0, so velocity is v in t0.
+
+    est_velocity_file << eventBundle.first_tstamp.toSec()  <<" " << euler_position.transpose() << endl;
+    
+    // evo estimation
+    // double angle2 = est_angleAxis.norm();
+    // Eigen::AngleAxisd ag_pos2 =  Eigen::AngleAxisd(angle2, est_angleAxis/ angle2);
+    // Eigen::Quaterniond q2 = Eigen::Quaterniond(ag_pos2);
+    // est_velocity_file_quat << eventBundle.last_tstamp << " 0 0 0 " << q2.x() << " "
+    //     << q2.y() << " "  << q2.z() << " " << q2.w() << endl;
     // cout << "time "  << time << " " << euler_position.transpose()  <<  endl; 
 
 }
@@ -454,6 +463,11 @@ void System::pushimageData(const ImageData& imageData)
     cv::remap(curr_raw_image, curr_undis_image, undist_mesh_x, undist_mesh_y, cv::INTER_LINEAR );
 }
 
+
+
+/** useless
+* \brief average 6 pose data from euler anglers to compute angular velocity.
+*/
 void System::pushPoseData(const PoseData& poseData)
 {
 
@@ -500,7 +514,7 @@ void System::pushPoseData(const PoseData& poseData)
         // velocity = delta_theta / delta_time;
     
         // cout << "  final velocity " << (velocity.array()/3.14*180).transpose() << endl;
-        gt_velocity_file << poseData.time_stamp <<" " << velocity_zerobased.transpose() << endl;
+        // gt_velocity_file << poseData.time_stamp <<" " << velocity_zerobased.transpose() << endl;
         
         vec_angular_velocity.push_back(velocity_zerobased);
         vec_curr_time.push_back(poseData.time_stamp);
@@ -508,7 +522,7 @@ void System::pushPoseData(const PoseData& poseData)
 
     double time = (poseData.time_stamp_ros - beginTS).toSec();
     // cout << "time " <<time  << ", " << poseData.pose.transpose() << "," << curr_pos.transpose() << endl;
-    gt_theta_file << time <<" " << curr_pos.transpose() << endl;
+    // gt_theta_file << time <<" " << curr_pos.transpose() << endl;
 
     vec_gt_poseData.push_back(poseData);
     // cout << "push pose to system " << endl;
@@ -517,7 +531,7 @@ void System::pushPoseData(const PoseData& poseData)
 
 void System::visualize()
 {
-        cout << "visualize" << endl; 
+        // cout << "visualize" << endl; 
             
         // TODO update all images 
 
@@ -528,8 +542,10 @@ void System::visualize()
         // cout << "channels " << curr_undis_event_image.channels() << 
             // "types " << curr_undis_event_image.type() << endl;
         cv::imshow("curr_undis_event_image", curr_undis_event_image);
+
+        getWarpedEventImage(est_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);
         cv::imshow("curr_warpped_event_image", curr_warpped_event_image * 0.3);
-        cv::imshow("curr_warpped_event_image_gt", curr_warpped_event_image_gt);
+        // cv::imshow("curr_warpped_event_image_gt", curr_warpped_event_image_gt);
 
         // cv::imshow("curr_map_image", curr_map_image);
         cv::imshow("hot_image_C3", hot_image_C3);

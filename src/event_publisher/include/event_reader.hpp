@@ -26,12 +26,14 @@ class Event_reader
 public:
     Event_reader(std::string yaml="", 
         ros::Publisher* event_array_pub = nullptr, 
-        ros::Publisher* event_image_pub_ = nullptr);
-    ~Event_reader();
+        ros::Publisher* event_image_pub = nullptr);
 
     void read(const std::string& dir);
     void publish();
-    void render();
+    void render();    
+
+    double sleep_rate;
+
 
 private:
 
@@ -43,10 +45,20 @@ private:
 
     int height, width;  // event image size
     
-    int event_bundle_size, max_events;    // maximum size of event vector 
+    int event_bundle_size;    // maximum size of event vector 
     
+    int read_max_lines; 
+    int read_start_lines;
+
     double delta_time; // 
     double curr_time;  
+
+    int using_fixed_time; 
+    double fixed_interval;
+
+    size_t count_pos;  // start pos of each publish
+
+    dvs_msgs::EventArrayPtr msg_ptr; // for publish
 
     cv_bridge::CvImage event_image; 
 

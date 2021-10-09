@@ -35,8 +35,8 @@ int main(int argc, char** argv)
     EventGrabber eventGrabber(sys);
     ros::Subscriber event_sub = nh.subscribe("/dvs/events", 40, &EventGrabber::GrabEvent, &eventGrabber);
 
-    PoseGrabber poseGrabber(sys);
-    ros::Subscriber pose_sub = nh.subscribe("/optitrack/davis", 10, &PoseGrabber::GrabPose, &poseGrabber);
+    // PoseGrabber poseGrabber(sys);
+    // ros::Subscriber pose_sub = nh.subscribe("/optitrack/davis", 10, &PoseGrabber::GrabPose, &poseGrabber);
 
 
     ros::spin();

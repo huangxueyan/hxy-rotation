@@ -65,7 +65,7 @@ public:
         const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR); 
 
     void getWarpedEventPoints(const EventBundle& eventIn, EventBundle& eventOut,
-        const Eigen::Vector3d& cur_ang_vel, const Eigen::Vector3d& cur_ang_pos=Eigen::Vector3d::Zero(), double delta_time=0);
+        const Eigen::Vector3d& cur_ang_vel, const Eigen::Vector3d& cur_ang_pos=Eigen::Vector3d::Zero(), double delta_time=-1);
     cv::Mat getImageFromBundle(EventBundle& eventBundle,
         const PlotOption option = PlotOption::U16C3_EVNET_IMAGE_COLOR, bool is_mapping=false);
 
@@ -75,14 +75,26 @@ public:
     void localCM(); 
 
     void EstimateMotion_kim();  
-    void EstimateMotion_ransca_once(double sample_ratio, double warp_time_ratio, double opti_steps);
+    // void EstimateMotion_ransca_once(double sample_ratio, double warp_time_ratio, double opti_steps);
+    void EstimateMotion_ransca_warp2bottom(double sample_start, double sample_end, double opti_steps);
+
     Eigen::Vector3d DeriveErrAnalytic(const Eigen::Vector3d &vel_angleAxis, const Eigen::Vector3d &pos_angleAxis);
-    Eigen::Vector3d DeriveTimeErrAnalyticLayer(const Eigen::Vector3d &vel_angleAxis, 
-        const std::vector<int>& vec_sampled_idx, double warp_time, double& residuals);
+    
+
+    Eigen::Vector3d DeriveTimeErrAnalyticRansacBottom(const Eigen::Vector3d &vel_angleAxis, 
+        const std::vector<int>& vec_sampled_idx, double& residuals);
+    Eigen::Vector3d GetGlobalTimeResidual();
+
+    // random warp time version 
     Eigen::Vector3d DeriveTimeErrAnalyticRansac(const Eigen::Vector3d &vel_angleAxis, 
         const std::vector<int>& vec_sampled_idx, double warp_time, double& residuals);
     void getTimeResidual(int sampled_x, int sampled_y, double sampled_time, double warp_time,
             double& residual, double& grad_x, double& grad_y);
+    // Eigen::Vector3d DeriveTimeErrAnalyticLayer(const Eigen::Vector3d &vel_angleAxis, 
+    //     const std::vector<int>& vec_sampled_idx, double warp_time, double& residuals);
+
+    void getSampledVec(vector<int>& vec_sampled_idx, int samples_count, double sample_start, double sample_end);
+    
 // visualize 
     void visualize();
 
@@ -158,8 +170,8 @@ private:
     Eigen::Vector3d est_angleAxis; // estimated anglar anxis from t2->t1.  = theta / delta_time 
 
 // output 
-    fstream gt_theta_file, gt_velocity_file; 
-    fstream est_theta_file, est_velocity_file; 
+    fstream est_theta_file, est_velocity_file;
+    // fstream est_velocity_file_quat;   // evo
 
 };
 

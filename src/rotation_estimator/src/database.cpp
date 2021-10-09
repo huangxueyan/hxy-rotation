@@ -81,7 +81,7 @@ EventBundle::EventBundle(const EventBundle& eb)
 */
 void EventBundle::Clear()
 {
-    cout << "event bundle clearing, size " <<  size << endl;
+    // cout << "event bundle clearing, size " <<  size << endl;
 
     size = 0; 
 
@@ -102,7 +102,7 @@ void EventBundle::Clear()
     // y.clear();
     // isInner.clear();
     
-    cout << "  event bundle clearing sucess" << endl;
+    // cout << "  event bundle clearing sucess" << endl;
 }
 
 
@@ -137,7 +137,7 @@ void EventBundle::Append(std::vector<dvs_msgs::Event>& vec_eventData)
 {   
     if(size == 0) 
     {
-        cout << "first appending events, "<< vec_eventData.size() << endl;
+        // cout << "first appending events, "<< vec_eventData.size() << endl;
         first_tstamp = vec_eventData.front().ts;
         // abs_tstamp = eventData.time_stamp;
     }
@@ -193,7 +193,7 @@ void EventBundle::InverseProjection(Eigen::Matrix3d& K)
 {
     // eigen array pixel-wise operates 
 
-    cout << "inverse project \n " << endl;
+    // cout << "inverse project \n " << endl;
     // cout << "coord size " << coord.size()  <<  "," << coord_3d.size() << endl;
     
     if(coord_3d.cols() != size)

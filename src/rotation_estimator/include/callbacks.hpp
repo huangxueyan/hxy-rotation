@@ -43,9 +43,20 @@ public:
 class PoseGrabber
 {
 public:
-    PoseGrabber(System* sys): system(sys){}
+    PoseGrabber(System* sys): system(sys) {
+        // que_valid = false;
+        gt_velocity_file = fstream("/home/hxt/Desktop/hxy-rotation/data/gt_theta_velocity.txt", ios::out);
+        // gt_velocity_file_quat = fstream("/home/hxt/Desktop/hxy-rotation/data/evo_data/gt_theta_velocity.txt", ios::out);
+    }
     void GrabPose(const geometry_msgs::PoseStampedConstPtr& msg);
     System* system; 
+
+
+    fstream gt_velocity_file; 
+    // fstream gt_velocity_file_quat;    //evo esti
+
+    // bool que_valid;
+    queue<PoseData> que_last_poseData;
     // ros::Time begin_time; 
 };
 

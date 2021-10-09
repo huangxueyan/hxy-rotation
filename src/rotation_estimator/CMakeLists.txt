@@ -151,7 +151,9 @@ add_executable(${PROJECT_NAME}_node
         src/system.cpp
         src/numerics.cpp
         src/system_estimate.cpp
-        src/contrastMax.cpp)
+        src/contrastMax.cpp
+        src/system_estimate_ransca.cpp
+        src/system_estimate_kim.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

@@ -9,9 +9,18 @@ Version: 1.0
 width: 240
 height: 180
 
+
+# groundtruth 
+groundtruth_dir: "/home/hxt/Documents/rosbag/Mono-unzip/poster_rotation/events.txt"
+read_start_lines: 0
+read_max_lines: 10e8
 #--------------------------------------------------------------------------------------------
 # Event Parameters (tunable).
 #--------------------------------------------------------------------------------------------
 # size of real targets
-Event.delta_time: 0.01
-Event.max_event: 1e5
+# Event.delta_time: 0.01
+using_fixed_time: 1  # means true
+fixed_interval: 0.03
+Event.bundle_size: 3e3 
+sleep_rate: 5  # 10Hz
+

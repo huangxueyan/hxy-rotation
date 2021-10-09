@@ -37,7 +37,6 @@ int main(int argc, char** argv)
 
     string yaml, event_dir; 
     bool loop = false; // mease loop the events
-    nh_private.param<string>("event_dir", event_dir,"");
     nh_private.param<string>("yaml", yaml,"");
     nh_private.param<bool>("loop", loop, false);
     
@@ -45,20 +44,19 @@ int main(int argc, char** argv)
     ros::Publisher raw_image = nh_private.advertise<sensor_msgs::Image>("/raw_image",10);
     ros::Publisher event_image = nh_private.advertise<sensor_msgs::Image>("/event_image",10);
     
-    ros::Rate loop_rate(1); // 1s 10 times 
-
 
     Event_reader event_reader(yaml, &event_array_pub, &event_image); 
-    event_reader.read(event_dir);
 
+    int sleep_rate = event_reader.sleep_rate;
+    ros::Rate ros_sleep_rate(sleep_rate); // 1s 10 times 
     while(ros::ok())
     {
         // ros::spinOnce(); // 
 
-        cv_bridge::CvImage cv_image; 
-        cv_image.encoding = "bgr8";
-        cv_image.image = cv::imread("/home/hxt/Pictures/test.jpg",cv::IMREAD_COLOR);
-        sensor_msgs::ImagePtr msg = cv_image.toImageMsg();
+        // cv_bridge::CvImage cv_image; 
+        // cv_image.encoding = "bgr8";
+        // cv_image.image = cv::imread("/home/hxt/Pictures/test.jpg",cv::IMREAD_COLOR);
+        // sensor_msgs::ImagePtr msg = cv_image.toImageMsg();
         // raw_image.publish(msg);
 
 
@@ -68,7 +66,7 @@ int main(int argc, char** argv)
         // event_array_pub.publish(evmsg);
 
         event_reader.publish();
-        loop_rate.sleep();
+        ros_sleep_rate.sleep();
     }
 
     ROS_INFO("Finish publishing date;");
