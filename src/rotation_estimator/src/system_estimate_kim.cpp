@@ -113,7 +113,7 @@ Eigen::Vector3d System::DeriveErrAnalytic(const Eigen::Vector3d &vel_angleAxis, 
 void System::EstimateMotion_kim()
 {
     // paramters 
-    int max_iter_count = 200;
+    int max_iter_count = 300;
         // velocity optimize steps and smooth factor
         double mu_event = 0.03, nu_event = 1; 
         double rho_event = 0.995;
@@ -122,7 +122,7 @@ void System::EstimateMotion_kim()
 
 
     Eigen::Vector3d angular_velocity_compensator(0,0,0), angular_position_compensator(0,0,0);
-    est_angleAxis = Eigen::Vector3d(0,0,0); // set to 0. 
+    // est_angleAxis = Eigen::Vector3d(0,0,0); // set to 0. 
 
     int output_sample = 10;
     for(int i=0; i< max_iter_count; i++)
@@ -138,8 +138,12 @@ void System::EstimateMotion_kim()
         est_angleAxis = SO3add(angular_velocity_compensator, est_angleAxis , true); 
         
 
-        if(angular_velocity_compensator.norm() < 0.001) break; // early break
-
+        if(angular_velocity_compensator.norm() < 0.0005)
+        {
+            cout << "early break iter " << i << endl; 
+            break; // early break
+        }
+        
         // visualize
         if(false && i % output_sample == 0)
         {

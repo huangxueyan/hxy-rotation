@@ -75,6 +75,7 @@ public:
     void localCM(); 
 
     void EstimateMotion_kim();  
+    void EstimateMotion_ransca_ceres(double sample_start, double sample_end);
     // void EstimateMotion_ransca_once(double sample_ratio, double warp_time_ratio, double opti_steps);
     void EstimateMotion_ransca_warp2bottom(double sample_start, double sample_end, double opti_steps);
 

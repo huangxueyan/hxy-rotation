@@ -30,6 +30,217 @@ void get_global_residual_map()
 
 
 
+
+
+/**
+* \brief used for ceres to implement CM methods, automatie version. .
+*/
+class ResidualCostFunctionAnalytic:  public ceres::SizedCostFunction<1, 3>
+{
+public:
+    ResidualCostFunctionAnalytic(
+        std::vector<int>& vec_sampled_idx,
+        const Eigen::Matrix3Xd& coord_3d, 
+        const Eigen::VectorXd& delta_time, const Eigen::Matrix3d& K, 
+        const cv::Mat& timesurface, 
+        ceres::BiCubicInterpolator<ceres::Grid2D<double, 1>>* interpolator_ptr)
+        :vec_sampled_idx_(vec_sampled_idx), _coord_3d(coord_3d), _delta_time(delta_time), _intrisic(K), timesurface_(timesurface), interpolator_ptr_(interpolator_ptr)
+    {
+        cout << "CM loss init :" << endl;
+        
+        // init timesurface and its surface 
+        // Eigen::Matrix<double,3,-1> new_coord_3d;
+        // warp<double>(ag_vec.data(), new_coord_3d);
+
+        cv::Mat image = cv::Mat::zeros({240,180}, CV_32FC1);
+        for(int i=0; i< 180; i++)
+        for(int j=0; j< 240; j++)
+        {
+            double value = 0;
+            interpolator_ptr_->Evaluate(i, j,  &value);
+            image.at<float>(i,j) = value;
+        }
+
+        cv::Mat image_color;
+        cv::normalize(image, image_color,255, 0, cv::NORM_MINMAX, CV_8UC1);  
+        cv::applyColorMap(image_color, image_color, cv::COLORMAP_JET);
+        cv::imshow("mage " , image_color);
+        cv::waitKey(2000);
+
+        // double a = 0; 
+        // interpolator_ptr_->Evaluate(86.8208, 121.686,  &a);
+        // cout << "init " << a << endl;
+    }
+
+    virtual ~ResidualCostFunctionAnalytic() {} 
+
+
+    virtual bool Evaluate(double const* const* parameters, double* residuals, double** jacobians) const 
+    {
+        
+        // warp event points using given ag 
+        Eigen::Matrix<double, 3, -1> ang_vel_hat_mul_x, ang_vel_hat_sqr_mul_x, coord_3d_T;
+        ang_vel_hat_mul_x.resize(3,_coord_3d.cols());
+        ang_vel_hat_sqr_mul_x.resize(3,_coord_3d.cols());
+
+        const double* ag = parameters[0];
+
+        cout << " using ag " << ag[0] << ", "<<  ag[1] <<", " <<  ag[2] << endl;
+
+        // equation 11 
+        ang_vel_hat_mul_x.row(0) = -ag[2]*_coord_3d.row(1) + ag[1]*_coord_3d.row(2);
+        ang_vel_hat_mul_x.row(1) =  ag[2]*_coord_3d.row(0) - ag[0]*_coord_3d.row(2);
+        ang_vel_hat_mul_x.row(2) = -ag[1]*_coord_3d.row(0) + ag[0]*_coord_3d.row(1);
+
+        ang_vel_hat_sqr_mul_x.row(0) = -ag[2]*ang_vel_hat_mul_x.row(1) + ag[1]*ang_vel_hat_mul_x.row(2);
+        ang_vel_hat_sqr_mul_x.row(1) =  ag[2]*ang_vel_hat_mul_x.row(0) - ag[0]*ang_vel_hat_mul_x.row(2);
+        ang_vel_hat_sqr_mul_x.row(2) = -ag[1]*ang_vel_hat_mul_x.row(0) + ag[0]*ang_vel_hat_mul_x.row(1);
+
+
+        // TODO using interpolation to get gradient  
+         Eigen::Matrix<double,3,-1> new_coord_3d = _coord_3d+ Eigen::Matrix<double,3,-1>
+                                    (  ang_vel_hat_mul_x.array().rowwise() 
+                                    * _delta_time.transpose().array()
+                                    + ang_vel_hat_sqr_mul_x.array().rowwise() 
+                                    * (0.5 * _delta_time.transpose().array().square()) );
+        // project and store in a image 
+        new_coord_3d.row(0) = new_coord_3d.row(0).array() / new_coord_3d.row(2).array() * (_intrisic(0,0)) + (_intrisic(0,2));
+        new_coord_3d.row(1) = new_coord_3d.row(1).array() / new_coord_3d.row(2).array() * (_intrisic(1,1)) + (_intrisic(1,2));
+
+        // evaluate warpped points in tiemsurface map 
+
+        double mean = (0); 
+        int count = 0; 
+        residuals[0] = 0;
+        for(int i=0; i<  vec_sampled_idx_.size(); i++)
+        {
+            // residual[i] = T(10);  // initial 
+            // double x = new_coord_3d(0,i), y = new_coord_3d(1,i); 
+            int index = vec_sampled_idx_[i];
+            double value = (0);
+            if(new_coord_3d(0,index)<1 || new_coord_3d(1,index) <1 
+                || new_coord_3d(0,index) > 238 || new_coord_3d(1,index) >178)
+                continue;
+            
+
+            double x = new_coord_3d(0,index),  y = new_coord_3d(1,index);
+            interpolator_ptr_->Evaluate(y, x,  &value);
+
+            // cout << "pos x " << x << "pos y " << y << " value " << value << endl
+            mean += value; 
+            count++;
+        }
+
+        mean /= count;
+
+        for(int i=0; i<  vec_sampled_idx_.size(); i++)
+        {
+            // residual[i] = T(10);  // initial 
+            // double x = new_coord_3d(0,i), y = new_coord_3d(1,i); 
+            int index = vec_sampled_idx_[i];
+            double value = 0;
+            if(new_coord_3d(0,index)<1 || new_coord_3d(1,index) <1 
+                || new_coord_3d(0,index) > 238 || new_coord_3d(1,index) >178)
+                continue;
+            
+
+            double x = new_coord_3d(0,index),  y = new_coord_3d(1,index);
+            interpolator_ptr_->Evaluate(y, x,  &value);
+
+            // cout << "pos x " << x << "pos y " << y << " value " << value << endl;
+            residuals[0] += ceres::pow((value-mean),2); 
+        }
+
+        residuals[0] = 100000 - residuals[0] ;
+        cout << " residual " << residuals[0] << ", ag " <<ag[0] << ", "<< ag[1] << ", " <<ag[2] << endl;
+        // residual[0] = T(100) - residual[0] ;
+
+       // calculate gradient 
+        if (jacobians == NULL || jacobians[0] == NULL)
+            return true;
+
+
+        Eigen::VectorXd Ix_interp, Iy_interp, x_z, y_z, _delta_time_valid;  // the first row of euq(8)
+        Eigen::Matrix3Xd eg_jacobian;
+        Ix_interp.resize(vec_sampled_idx_.size());
+        Iy_interp.resize(vec_sampled_idx_.size());
+        x_z.resize(vec_sampled_idx_.size());
+        y_z.resize(vec_sampled_idx_.size());
+        _delta_time_valid.resize(vec_sampled_idx_.size());
+        eg_jacobian.resize(3,vec_sampled_idx_.size());
+
+        for(int i=0; i<vec_sampled_idx_.size(); i++)
+        {
+            int x = int(new_coord_3d(0,vec_sampled_idx_[i])), y = int(new_coord_3d(1,vec_sampled_idx_[i]));
+            _delta_time_valid(i) = _delta_time(vec_sampled_idx_[i]);
+            // conversion from float to double
+
+            double value, dtdr, dtdc;
+            interpolator_ptr_->Evaluate(y,x,&value, &dtdr, &dtdc);
+
+            Ix_interp(i) = value * dtdc;  
+            Iy_interp(i) = value * dtdr;
+
+            x_z(i) = new_coord_3d(0,vec_sampled_idx_[i]) / new_coord_3d(2,vec_sampled_idx_[i]);
+            y_z(i) = new_coord_3d(1,vec_sampled_idx_[i]) / new_coord_3d(2,vec_sampled_idx_[i]);
+        }
+
+        Ix_interp *= _intrisic(0,0);
+        Iy_interp *= _intrisic(1,1);
+        
+        eg_jacobian.row(0) = -Ix_interp.array()*x_z.array()*y_z.array() 
+                            - Iy_interp.array()*(1+y_z.array()*y_z.array());
+
+        eg_jacobian.row(1) = Ix_interp.array()*(1+x_z.array()*x_z.array()) 
+                            + Iy_interp.array()*x_z.array()*y_z.array();
+        
+        eg_jacobian.row(2) = -Ix_interp.array()*y_z.array() 
+                            + Iy_interp.array()*x_z.array();
+
+        // cout << "eg_jacobian " << eg_jacobian.cols() << ","<<eg_jacobian.rows() <<endl;
+        // cout << "_delta_time " << _delta_time_valid.cols() << ","<<_delta_time_valid.rows() <<endl;
+        
+
+        jacobians[0][0] = eg_jacobian.row(0) * _delta_time_valid;
+        jacobians[0][1] = eg_jacobian.row(1) * _delta_time_valid;
+        jacobians[0][2] = eg_jacobian.row(2) * _delta_time_valid;
+        
+
+        cout << "jacobian " << jacobians[0][0]<<"," <<jacobians[0][1] <<","<< jacobians[0][2] << endl; 
+
+
+        // sum of this value
+        // cout << "total residual" << residual[0] << endl;
+        return true;
+    }
+
+    // TODO FIXME reference to CVPR2019 for gaussian smoother. 
+    
+    // make ceres costfunction 
+    static ceres::CostFunction* Create(
+        std::vector<int>& vec_sampled_idx, 
+        const Eigen::Matrix3Xd& coord_3d, const Eigen::VectorXd& delta_time, 
+        const Eigen::Matrix3d& K, const cv::Mat& timesurface, 
+        ceres::BiCubicInterpolator<ceres::Grid2D<double, 1>>* interpolator_ptr)
+        {
+            return new ResidualCostFunctionAnalytic(vec_sampled_idx, coord_3d, delta_time, K, timesurface, interpolator_ptr);
+        }
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    // inputs     
+    Eigen::Matrix3d _intrisic; 
+    std::vector<int> vec_sampled_idx_;
+    Eigen::Matrix3Xd _coord_3d; 
+    Eigen::VectorXd _delta_time;
+    // std::vector<double> ag_vec;
+    cv::Mat timesurface_; 
+
+    ceres::BiCubicInterpolator<ceres::Grid2D<double, 1>> *interpolator_ptr_;
+    // Eigen::Matrix3Xd ang_vel_hat_mul_x, ang_vel_hat_sqr_mul_x;
+};
+
+
+
 /**
 * \brief using time as distance, random warptime.
 * \param sample_ratio the later(time) part of events, 
@@ -417,3 +628,35 @@ Eigen::Vector3d System::DeriveTimeErrAnalyticLayer(const Eigen::Vector3d &vel_an
 
     return jacobian;
 }
+
+
+
+// intrpolation 
+    line_grid[1 * 240 + 1] = 1;
+    line_grid[1 * 240 + 2] = 2;
+    line_grid[1 * 240 + 3] = 3;
+    line_grid[1 * 240 + 4] = 4;
+    line_grid[2 * 240 + 1] = 1;
+    line_grid[2 * 240 + 2] = 2;
+    line_grid[2 * 240 + 3] = 3;
+    line_grid[2 * 240 + 4] = 4;
+    line_grid[3 * 240 + 1] = 1;
+    line_grid[3 * 240 + 2] = 2;
+    line_grid[3 * 240 + 3] = 3;
+    line_grid[3 * 240 + 4] = 4;
+    line_grid[4 * 240 + 1] = 1;
+    line_grid[4 * 240 + 2] = 2;
+    line_grid[4 * 240 + 3] = 3;
+    line_grid[4 * 240 + 4] = 4;
+    interpolator_ptr->Evaluate(2,2,&value);
+    cout << "interpolated " << value << endl;
+    interpolator_ptr->Evaluate(2.2,2.2,&value);
+    cout << "interpolated " << value << endl;
+    interpolator_ptr->Evaluate(2.5,2.5,&value);
+    cout << "interpolated " << value << endl;
+    interpolator_ptr->Evaluate(2.7,2.7,&value);
+    cout << "interpolated " << value << endl;
+    interpolator_ptr->Evaluate(2.9,2.9,&value);
+    cout << "interpolated " << value << endl;
+    interpolator_ptr->Evaluate(3,3,&value);
+    cout << "interpolated " << value << endl;

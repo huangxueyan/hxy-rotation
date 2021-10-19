@@ -43,6 +43,7 @@ void EventGrabber::GrabEvent(const dvs_msgs::EventArrayConstPtr& msg)
     {
         begin_time = msg->events[0].ts; 
         system->setBeginTime(msg->events[0].ts);
+        cout << "begin time " << msg->events[0].ts.sec << "." <<msg->events[0].ts.nsec  << endl;
     }
 
 
@@ -51,7 +52,7 @@ void EventGrabber::GrabEvent(const dvs_msgs::EventArrayConstPtr& msg)
     // eventdata.event = msg->events; // vector<dvsmsg::event> 
     double time_stamp = (msg->events[0].ts - begin_time).toSec(); 
     double delta_time = (msg->events.back().ts-msg->events.front().ts).toSec();
-    cout<<"receiving events " << msg->events.size() <<", time: " << time_stamp<<", delta time " << delta_time <<endl;
+    cout<<"receiving events " << msg->events.size() <<", time: " << msg->events[0].ts.toSec()<<", delta time " << delta_time <<endl;
 
     // system->que_vec_eventData_mutex.lock();
     system->pushEventData(msg->events);

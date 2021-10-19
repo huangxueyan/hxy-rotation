@@ -28,7 +28,7 @@ public:
         ros::Publisher* event_array_pub = nullptr, 
         ros::Publisher* event_image_pub = nullptr);
 
-    void read(const std::string& dir);
+    bool read(int event_size = 0, double event_interval = 0);
     void publish();
     void render();    
 
@@ -62,6 +62,8 @@ private:
 
     cv_bridge::CvImage event_image; 
 
+    std::ifstream openFile; // read file 
+    int count_liens; 
 };
 
 

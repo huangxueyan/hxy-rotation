@@ -22,31 +22,47 @@ Event_reader::Event_reader(std::string yaml,
     fixed_interval = fSettings["fixed_interval"];
     sleep_rate = fSettings["sleep_rate"];
 
-    read(fSettings["groundtruth_dir"]);
+    // read(fSettings["groundtruth_dir"]);
 
-};
-
-void Event_reader::read(const std::string& dir)
-{
-    std::vector<dvs_msgs::Event> vec_events; 
-
-    std::ifstream openFile(dir.c_str(),std::ios_base::in);
+    string dir = fSettings["groundtruth_dir"];
+    openFile = std::ifstream(dir.c_str(),std::ios_base::in);
     if(!openFile.is_open())
     {
         std::cout << "file not opened " << std::endl;
         return;
     }
 
+    count_liens = 0;
+
+};
+
+
+/**
+* \brief read file.
+* \param return bool indicating read success.
+*/
+bool Event_reader::read(int target_size, double target_interval)
+{
+    // std::vector<dvs_msgs::Event> vec_events; 
+    // std::ifstream openFile(dir.c_str(),std::ios_base::in);
+    // if(!openFile.is_open())
+    // {
+    //     std::cout << "file not opened " << std::endl;
+    //     return;
+    // }
+
     string line, token; 
     std::vector<std::string> vToken;
 
+    int start_line = count_liens;
+    double start_time = eventData.empty() ? 0: eventData.back().ts.toSec();
+
     dvs_msgs::Event msg;
-    int count_liens = 0;
     while(getline(openFile, line))
     {
-        if(count_liens++ <read_start_lines) continue;
+        if(count_liens++ < read_start_lines) continue;
         if(count_liens > read_max_lines)
-            break;
+            return false;
             
         std::stringstream ss(line); 
         while (getline(ss, token, ' '))
@@ -59,13 +75,17 @@ void Event_reader::read(const std::string& dir)
             msg.x = uint16_t(std::strtod(vToken[1].c_str(),&temp));
             msg.y = uint16_t(std::strtod(vToken[2].c_str(), &temp));
             msg.polarity = uint8_t(std::strtod(vToken[3].c_str(), &temp));
-            vec_events.emplace_back(msg);
+            eventData.emplace_back(msg);
         }
-
         vToken.clear();
+
+
+        if(target_size > 0 && count_liens-start_line > target_size) break;
+        if(target_interval > 0 && eventData.back().ts.toSec()-start_time > target_interval) break;
     }
 
-    eventData = std::move(vec_events);
+    return true;
+
 }
 
 
@@ -80,8 +100,9 @@ void Event_reader::publish()
     // fixed number
     if(!using_fixed_time)
     {
+        read(event_bundle_size, 0);  // read fixed size 
         int current_size = 0;
-        while(current_size < event_bundle_size && count_pos < eventData.size())
+        while(count_pos < eventData.size())
         {
             msg_ptr->events.push_back(eventData[count_pos]);
             msg_ptr->header.seq = count_pos;
@@ -94,8 +115,9 @@ void Event_reader::publish()
     } 
     else // fixed interval 
     {
+        read(0, fixed_interval);  // read fixed time 
         double interval = 0;
-        while(interval < fixed_interval && count_pos < eventData.size())
+        while(count_pos < eventData.size())
         {
             msg_ptr->events.push_back(eventData[count_pos]);
             msg_ptr->header.seq = count_pos;

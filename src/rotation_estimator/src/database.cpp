@@ -9,16 +9,29 @@ CameraPara::CameraPara()
     width = 240; 
     height = 180; 
 
-    fx = 230.2097;
-    fy = 231.1228;
-    cx = 121.6862;
-    cy = 86.8208;
-    rd1 = -0.4136;
-    rd2 = 0.2042;
+    // fx = 230.2097;
+    // fy = 231.1228;
+    // cx = 121.6862;
+    // cy = 86.8208;
+    // rd1 = -0.4136;
+    // rd2 = 0.2042;
+
+    fx = 199.092366542;
+    fy = 198.82882047;
+    cx = 132.192071378;
+    cy = 110.712660011;
+    k1 = -0.368436311798;
+    k2 = 0.150947243557;
+    p1 = -0.000296130534385;
+    p2 = -0.000759431726241;
+    k3 = 0.0;
+
+     
+
 
     cameraMatrix = (cv::Mat_<float>(3,3) << 
                     fx, 0, cx , 0, fy, cy, 0, 0, 1); 
-    distCoeffs = (cv::Mat_<double>(1,4) << rd1, rd2, 0 ,0 ); 
+    distCoeffs = (cv::Mat_<double>(1,5) << k1, k2, p1, p2, k3); 
 
     // cout << "camera param:" << endl;
     // cout << cameraMatrix << endl; 
@@ -119,7 +132,7 @@ void EventBundle::DiscriminateInner(int width, int height)
 
     for(uint32_t i = 0; i < size; ++i)
     {
-        if(coord(0,i)<1 || coord(0,i)>=(width-1) || coord(1,i)<1 || coord(1,i)>=(height-1)) 
+        if(coord(0,i)<3 || coord(0,i)>=(width-3) || coord(1,i)<3 || coord(1,i)>=(height-3)) 
             isInner[i] = 0;
         else isInner[i] = 1;
     }
@@ -201,12 +214,18 @@ void EventBundle::InverseProjection(Eigen::Matrix3d& K)
         coord_3d.resize(3, size);
         cout << "resizing coord_3d" << endl;
     }   
-    // cout << coord_3d.topLeftCorner(3,5) << endl;
 
     coord_3d.row(0) = (coord.row(0).array()-K(0,2)) / K(0,0);
     coord_3d.row(1) = (coord.row(1).array()-K(1,2)) / K(1,1);
     
     coord_3d.row(2) = Eigen::MatrixXd::Ones(1, size);
+    
+    // cout << coord_3d.topLeftCorner(3,5) << endl;
+    coord_3d.colwise().normalize();
+
+    // cout << coord_3d.topLeftCorner(3,5) << endl;
+    
+    // cout << coord_3d.bottomRightCorner(3,5) << endl;
 
 }
 
@@ -227,7 +246,11 @@ void EventBundle::Projection(Eigen::Matrix3d& K)
 
     coord.row(0) = coord_3d.row(0).array() / coord_3d.row(2).array() * K(0,0) + K(0,2);
     coord.row(1) = coord_3d.row(1).array() / coord_3d.row(2).array() * K(1,1) + K(1,2);
+
+    // TODO add gaussian 
     coord = coord.array().round(); // pixel wise 
+
+
     // cout << "  projecting sucess " << endl;
 }
 

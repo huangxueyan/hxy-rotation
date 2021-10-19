@@ -50,8 +50,9 @@ struct CameraPara
     double fy;
     double cx;
     double cy;
-    double rd1;
-    double rd2;
+    double k1, k2, p1, p2, k3;
+    // double rd1;
+    // double rd2;
 
     int width, height, height_map, width_map;
 
