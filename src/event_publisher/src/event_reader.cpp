@@ -102,6 +102,9 @@ void Event_reader::publish()
     {
         read(event_bundle_size, 0);  // read fixed size 
         int current_size = 0;
+
+        est_velocity_file = fstream("/home/hxt/Desktop/hxy-rotation/data/ransac_velocity.txt", ios::out);
+
         while(count_pos < eventData.size())
         {
             msg_ptr->events.push_back(eventData[count_pos]);
@@ -110,6 +113,8 @@ void Event_reader::publish()
 
             current_size++;
             count_pos++;
+
+            est_velocity_file << t1+t2  <<" " << euler_position.transpose() << endl;
         }
 
     } 
