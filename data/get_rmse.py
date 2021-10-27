@@ -7,16 +7,16 @@ import math
 
 
 ## shapes 
-# filename1 = "/home/hxt/Desktop/hxy-rotation/data/shapes_gt_theta_velocity_python.txt"
-# filename1 = "/home/hxt/Desktop/hxy-rotation/data/poster_gt_theta_velocity_python.txt"
-# filename1 = "/home/hxt/Desktop/hxy-rotation/data/boxes_gt_theta_velocity_python.txt"
-filename1 = "/home/hxt/Desktop/hxy-rotation/data/dynamic_gt_theta_velocity_python.txt"
+filename1 = "/home/hxy/Desktop/hxy-rotation/data/shapes_gt_theta_velocity_python.txt"
+# filename1 = "/home/hxy/Desktop/hxy-rotation/data/poster_gt_theta_velocity_python.txt"
+# filename1 = "/home/hxy/Desktop/hxy-rotation/data/boxes_gt_theta_velocity_python.txt"
+# filename1 = "/home/hxy/Desktop/hxy-rotation/data/dynamic_gt_theta_velocity_python.txt"
 
-# filename2 = "/home/hxt/Desktop/hxy-rotation/data/dynamic_velocity.txt"
-filename2 = "/home/hxt/Desktop/hxy-rotation/data/ransac_velocity.txt"
+# filename2 = "/home/hxy/Desktop/hxy-rotation/data/dynamic_velocity.txt"
+# filename2 = "/home/hxy/Desktop/hxy-rotation/data/ransac_velocity.txt"
 
-# filename2 = "/home/hxt/Desktop/hxy-rotation/data/shapes_cm_theta_velocity.txt"
-# filename2 = "/home/hxt/Desktop/hxy-rotation/data/dynamic_ransac_theta_velocity.txt"
+filename2 = "/home/hxy/Desktop/hxy-rotation/data/shapes_ransac_theta_velocity.txt"
+# filename2 = "/home/hxy/Desktop/hxy-rotation/data/dynamic_ransac_theta_velocity.txt"
 
 
 data_num_gt = []
@@ -98,7 +98,7 @@ def search_bias(bias, store = False):
             inter_est_list.append([t_est, x_est, y_est, z_est])
     rms_tuple.append((rms, bias))
 
-for bias in np.linspace(-0.05, 0.06, 80):
+for bias in np.linspace(-0.05, 0.12, 50):
     search_bias(bias, store = False)
     print("bias {:.3f}, rms {:.2f}".format(rms_tuple[-1][1],rms_tuple[-1][0]))
 
@@ -134,9 +134,9 @@ ax0.set_ylabel("(degree/s)")
 ax1.plot(inter_gt_list[:,0], inter_gt_list[:,1]/3.14*180,marker = "",markersize=5, c='b',linestyle="--", linewidth=1)
 ax1.plot(inter_gt_list[:,0], inter_gt_list[:,2]/3.14*180,marker = "",markersize=5, c='r',linestyle="--", linewidth=1)
 ax1.plot(inter_gt_list[:,0], inter_gt_list[:,3]/3.14*180,marker = "",markersize=5, c='y',linestyle="--", linewidth=1)
-ax1.plot(inter_est_list[:,0]+bias, inter_est_list[:,1]/3.14*180,marker = "x",markersize=2, c='b',linestyle="-", linewidth=1)
-ax1.plot(inter_est_list[:,0]+bias, inter_est_list[:,2]/3.14*180,marker = "x",markersize=2, c='r',linestyle="-", linewidth=1)
-ax1.plot(inter_est_list[:,0]+bias, inter_est_list[:,3]/3.14*180,marker = "x",markersize=2, c='y',linestyle="-", linewidth=1)
+ax1.plot(inter_est_list[:,0], inter_est_list[:,1]/3.14*180,marker = "x",markersize=2, c='b',linestyle="-", linewidth=1)
+ax1.plot(inter_est_list[:,0], inter_est_list[:,2]/3.14*180,marker = "x",markersize=2, c='r',linestyle="-", linewidth=1)
+ax1.plot(inter_est_list[:,0], inter_est_list[:,3]/3.14*180,marker = "x",markersize=2, c='y',linestyle="-", linewidth=1)
 
 
 plt.title("rms {:.2f} degree/s".format(math.sqrt(rms/len(data_num_est))/3.14*180))

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 project(rotation_estimator)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-std=c++11 -mtune=native)
+add_compile_options(-std=c++14)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -16,8 +16,10 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   dvs_msgs
+  event_publisher
 )
 
+find_package(OpenCV 4 REQUIRED)
 find_package(Sophus REQUIRED )
 find_package(Ceres REQUIRED )
 
@@ -112,10 +114,10 @@ find_package(Ceres REQUIRED )
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES rotation_estimator
-#  CATKIN_DEPENDS cv_bridge eigen_conversions nav_msgs roscpp sensor_msgs std_msgs tf
-#  DEPENDS system_lib
+ INCLUDE_DIRS include
+ LIBRARIES rotation_estimator
+ CATKIN_DEPENDS cv_bridge eigen_conversions roscpp sensor_msgs std_msgs event_publisher
+ DEPENDS 
 )
 
 ###########
@@ -126,7 +128,9 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
     include
+    "/home/hxy/Desktop/hxy-rotation/src/event_publisher/include"
     ${catkin_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIRS}
     ${Sophus_INCLUDE_DIRS}
     ${CERES_INCLUDE_DIRS}
 )
@@ -153,6 +157,7 @@ add_executable(${PROJECT_NAME}_node
         src/system_estimate.cpp                 # store utils for motion estimation  
         src/system_estimate_ransca.cpp          # ransac method with self defined gradient function, RMSPros
         src/system_estimate_ransca_ceres.cpp    # ransac method with using ceres
+        # src/system_estimate_ransca_ceres_angle.cpp  
         src/system_estimate_kim.cpp)            # using kim method with self defined gradient function, R
 
 ## Rename C++ executable without prefix

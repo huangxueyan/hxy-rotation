@@ -63,7 +63,7 @@ Eigen::Vector3d System::DeriveErrAnalytic(const Eigen::Vector3d &vel_angleAxis, 
         
         Ix_interp(i) = Ix.at<float>(y,x);  
         Iy_interp(i) = Iy.at<float>(y,x);
-        warped_image_delta_t(i) = eventBundle.time_delta(vec_valid[i]) 
+        warped_image_delta_t(i) = -eventBundle.time_delta(vec_valid[i]) 
                                 * curr_warpped_event_image.at<float>(y, x);
 
         x_z(i) = event_warpped_Bundle.coord_3d(0,vec_valid[i]) / event_warpped_Bundle.coord_3d(2,vec_valid[i]);
@@ -113,9 +113,10 @@ Eigen::Vector3d System::DeriveErrAnalytic(const Eigen::Vector3d &vel_angleAxis, 
 void System::EstimateMotion_kim()
 {
     // paramters 
+    cout << "time "<< eventBundle.first_tstamp.toSec() <<  ", total " << eventBundle.size << endl;
     int max_iter_count = 300;
         // velocity optimize steps and smooth factor
-        double mu_event = 0.03, nu_event = 1; 
+        double mu_event = 0.05, nu_event = 1; 
         double rho_event = 0.995;
         // position 
         double mu_map = 0.05, nu_map = 1;
@@ -140,7 +141,7 @@ void System::EstimateMotion_kim()
 
         if(angular_velocity_compensator.norm() < 0.0005)
         {
-            cout << "early break iter " << i << endl; 
+            cout << "\t early break iter " << i << endl; 
             break; // early break
         }
         

@@ -109,10 +109,10 @@ find_package(Eigen3 REQUIRED)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES event_publisher
+ INCLUDE_DIRS include
+ LIBRARIES event_publisher
 #  CATKIN_DEPENDS cv_bridge image_transport roscpp sensor_msg std_msg
-#  DEPENDS system_lib
+#  DEPENDS 
 )
 
 ###########
@@ -129,9 +129,9 @@ include_directories(
 )
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/event_publisher.cpp
-# )
+add_library(${PROJECT_NAME}
+    src/event_reader.cpp
+)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries

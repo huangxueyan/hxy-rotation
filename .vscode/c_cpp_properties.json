@@ -1,21 +1,21 @@
 {
-  "configurations": [
-    {
-      "browse": {
-        "databaseFilename": "",
-        "limitSymbolsToIncludedHeaders": true
-      },
-      "includePath": [
-        "/opt/ros/noetic/include/**",
-        "/usr/include/**",
-        "/home/hxt/Desktop/hxy-rotation/devel/include",
-        "/home/hxt/Desktop/hxy-rotation/src/rotation_estimator/include",
-        "/home/hxt/Desktop/hxy-rotation/src/event_publisher/include",
-        "/home/hxt/Desktop/hxy-rotation/src/event_bundler/include",
-        
-      ],
-      "name": "ROS"
-    }
-  ],
-  "version": 4
+    "configurations": [
+        {
+            "browse": {
+                "databaseFilename": "",
+                "limitSymbolsToIncludedHeaders": true
+            },
+            "includePath": [
+                "/opt/ros/noetic/include/**",
+                "/usr/include/**",
+                "/home/hxy/Desktop/hxy-rotation/devel/include",
+                "/home/hxy/Desktop/hxy-rotation/src/rotation_estimator/include",
+                "/home/hxy/Desktop/hxy-rotation/src/event_publisher/include",
+                "/home/hxy/Desktop/hxy-rotation/src/event_bundler/include"
+            ],
+            "name": "ROS",
+            "configurationProvider": "ms-vscode.cmake-tools"
+        }
+    ],
+    "version": 4
 }

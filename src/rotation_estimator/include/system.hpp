@@ -11,7 +11,7 @@
 
 
 // third party 
-#include <Eigen/Core>
+#include <eigen3/Eigen/Core>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -171,6 +171,7 @@ private:
     Eigen::Vector3d est_angleAxis; // estimated anglar anxis from t2->t1.  = theta / delta_time 
 
 // output 
+    size_t seq_count;
     fstream est_theta_file, est_velocity_file;
     // fstream est_velocity_file_quat;   // evo
 

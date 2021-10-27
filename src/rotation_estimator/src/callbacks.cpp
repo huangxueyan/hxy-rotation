@@ -37,7 +37,7 @@ void ImageGrabber::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 
 void EventGrabber::GrabEvent(const dvs_msgs::EventArrayConstPtr& msg) 
 {
-    if(msg->events.empty()) return; 
+    if(msg->events.empty() || msg->events.size()<1000) return; 
 
     if(begin_time == ros::Time(0)) 
     {

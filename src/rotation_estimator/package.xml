@@ -71,6 +71,9 @@
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>tf</exec_depend>
 
+  <build_depend>event_publisher</build_depend>
+  <exec_depend>event_publisher</exec_depend>
+
     <depend> dvs_msgs </depend>
 
   <!-- The export tag contains other, unspecified, tags -->

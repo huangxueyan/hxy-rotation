@@ -66,9 +66,9 @@ struct ResidualCostFunction
         delta_second_points_T(1) =  ag[2]*delta_points_T(0) - ag[0]*delta_points_T(2);
         delta_second_points_T(2) = -ag[1]*delta_points_T(0) + ag[0]*delta_points_T(1);
 
-        points_T(0) = T(points_(0)) + delta_points_T(0)*T(delta_time_); // + delta_second_points_T(0)*T(0.5*delta_time_*delta_time_);
-        points_T(1) = T(points_(1)) + delta_points_T(1)*T(delta_time_); // + delta_second_points_T(1)*T(0.5*delta_time_*delta_time_);
-        points_T(2) = T(points_(2)) + delta_points_T(2)*T(delta_time_); // + delta_second_points_T(2)*T(0.5*delta_time_*delta_time_);
+        points_T(0) = T(points_(0)) - delta_points_T(0)*T(delta_time_); // + delta_second_points_T(0)*T(0.5*delta_time_*delta_time_);
+        points_T(1) = T(points_(1)) - delta_points_T(1)*T(delta_time_); // + delta_second_points_T(1)*T(0.5*delta_time_*delta_time_);
+        points_T(2) = T(points_(2)) - delta_points_T(2)*T(delta_time_); // + delta_second_points_T(2)*T(0.5*delta_time_*delta_time_);
         
         // cout << "points "<< points(0) << ", "<< points(1) << endl;
         
@@ -91,9 +91,6 @@ struct ResidualCostFunction
 
         return true;
     }
-
-    // TODO FIXME reference to CVPR2019 for gaussian smoother. 
-    
 
     // make ceres costfunction 
     static ceres::CostFunction* Create(
@@ -123,17 +120,8 @@ struct ResidualCostFunction
 */
 void System::EstimateMotion_ransca_ceres(double sample_start, double sample_end)
 {
-    cout << "------------- sample_start " <<
-        sample_start<< " sample_end " << sample_end<< ", iter " << " ----" <<endl;
-    
-    // cout << "using angle axis " << est_angleAxis.transpose() << endl;
-        // visualize warp events and get a timesurface image with indexs 
-        {
-            cv::Mat cv_timesurface; 
-            cv_timesurface = getImageFromBundle(event_undis_Bundle, PlotOption::TIME_SURFACE);  
-            cv::normalize(cv_timesurface, hot_image_C1, 0,255, cv::NORM_MINMAX, CV_8UC1);
-            cv::cvtColor(hot_image_C1, hot_image_C3, cv::COLOR_GRAY2BGR);
-        }
+    cout << "------------- time "<< eventBundle.first_tstamp.toSec() <<  ", total " << 
+            eventBundle.size << ", sample ratio " << sample_start<<"~"<< sample_end <<" ----" <<endl;
 
     // select 100 random points, and warp delta_t < min(t_point_delta_t). 
     // accumulate all time difference before and after warpped points. 
@@ -145,13 +133,14 @@ void System::EstimateMotion_ransca_ceres(double sample_start, double sample_end)
     // est_angleAxis = Eigen::Vector3d::Zero();
     double angleAxis[3] = {est_angleAxis(0), est_angleAxis(1), est_angleAxis(2)}; 
     
-    for(int iter_=0; iter_< 5; iter_++)
+    for(int iter_=0; iter_< 20; iter_++)
     {
         // get timesurface earlier 
         Eigen::Vector3d eg_angleAxis(angleAxis[0],angleAxis[1],angleAxis[2]);
         // cout << "before angleaxis " << eg_angleAxis.transpose() << endl;
         
-        double timesurface_range = iter_/10.0 + 0.2;
+        double timesurface_range = iter_/100.0 + 0.2;
+        // double timesurface_range = 0.2;
         cv::Mat cv_earlier_timesurface = cv::Mat(180,240, CV_32FC1); 
         cv::Mat visited_map = cv::Mat(180,240, CV_8U); visited_map.setTo(0);
         double default_value = eventBundle.time_delta(int(eventBundle.size*timesurface_range));
@@ -160,6 +149,8 @@ void System::EstimateMotion_ransca_ceres(double sample_start, double sample_end)
         // get t0 time surface of warpped image !!
         getWarpedEventImage(eg_angleAxis, event_warpped_Bundle); // init timesurface  
 
+        // get timesurface
+        // vector<double> line_grid(180*240, 0); 
         for(int i=0; i<(event_warpped_Bundle.size*timesurface_range); i++)
         {
             
@@ -169,30 +160,15 @@ void System::EstimateMotion_ransca_ceres(double sample_start, double sample_end)
             if(event_warpped_Bundle.isInner[i] < 1) continue;               // outlier 
             if(visited_map.at<uchar>(sampled_y, sampled_x) > 0) continue;   // visited 
             visited_map.at<uchar>(sampled_y, sampled_x) = 1;
-            // linear 
+            // linear add 
                 cv_earlier_timesurface.at<float>(sampled_y, sampled_x) = eventBundle.time_delta(i);  
-            // gaussian 
-            // {
-            //     const double sig = 1, mean = 0;
-            //     for(int j=-1; j<2 ; j++) // col 
-            //     for(int k=-1; k<2 ; k++) // row
-            //     {
-            //         double distance = pow(event_warpped_Bundle.coord.col(i)[0]-sampled_x+j, 2) 
-            //                             + pow(event_warpped_Bundle.coord.col(i)[1]-sampled_y+k,  2);
-            //         double ratio = 1/(sqrt(2*3.14)*sig) * exp(-distance*distance / (2*sig*sig));
-
-            //         // TODO test (1-ratio) and ratio
-            //         cv_earlier_timesurface.at<float>(sampled_y+k, sampled_x+j) += (1-ratio) * eventBundle.time_delta(i);
-            //     }
-                
-            // }
-            
+                // line_grid[sampled_y * 240 + sampled_x] = eventBundle.time_delta(i); 
         } 
-
-        // cv::GaussianBlur(cv_earlier_timesurface, cv_earlier_timesurface, {3,3}, 1);
-
+        // ceres::Grid2D<double,1> grid(line_grid.data(), 0, 180, 0, 240);
+        // auto* interpolator_ptr = new ceres::BiCubicInterpolator<ceres::Grid2D<double, 1>>(grid);  
+            
             {
-                // visualize 
+                // visualize timesurface 
                 cv::Mat cv_earlier_timesurface_8U, cv_earlier_timesurface_color; 
                 cv::normalize(cv_earlier_timesurface, cv_earlier_timesurface_8U, 255, 0, cv::NORM_MINMAX , CV_8UC1 );
                 // cv_earlier_timesurface.convertTo(cv_earlier_timesurface_8U, CV_8UC1);
@@ -200,6 +176,8 @@ void System::EstimateMotion_ransca_ceres(double sample_start, double sample_end)
                 cv::imshow("timesurface", cv_earlier_timesurface_color);
                 cv::waitKey(1);
             }
+
+        // TODO add gaussian on cv_earlier_timesurface
 
         // get timesurface in ceres 
         vector<double> line_grid(180*240, 0);
@@ -222,7 +200,7 @@ void System::EstimateMotion_ransca_ceres(double sample_start, double sample_end)
 
         // init problem 
         ceres::Problem problem; 
-
+        // add residual 
         for(int loop_temp =0; loop_temp <vec_sampled_idx.size(); loop_temp++)
         {
             size_t sample_idx = vec_sampled_idx[loop_temp];
@@ -237,44 +215,41 @@ void System::EstimateMotion_ransca_ceres(double sample_start, double sample_end)
     
         ceres::Solver::Options options;
         options.minimizer_progress_to_stdout = false;
-        options.num_threads = 1;
+        options.num_threads = 14;
         // options.logging_type = ceres::SILENT;
         options.linear_solver_type = ceres::SPARSE_SCHUR;
         // options.use_nonmonotonic_steps = true;
-        options.max_num_iterations = 50;
+        options.max_num_iterations = 10;
         // options.initial_trust_region_radius = 1;
 
         ceres::Solver::Summary summary; 
         ceres::Solve(options, &problem, &summary);
         // cout << summary.BriefReport() << endl;
 
-        cout << "   iter " << iter_ << ", ceres iters " << summary.iterations.size()<< endl;
-
-
+        // cout << "   iter " << iter_ << ", ceres iters " << summary.iterations.size()<< endl;
         if(summary.BriefReport().find("NO_CONVERGENCE") != std::string::npos)
         {
-            cout << "No convergence Event bundle time " << eventBundle.first_tstamp.toSec() << endl;
-            cout << summary.BriefReport() << endl;
+            cout << "   iter " << iter_ <<  ", No convergence Event bundle time " << eventBundle.first_tstamp.toSec() <<", size " << eventBundle.size << endl;
+            // cout << summary.BriefReport() << endl;
         }
-
-
-        // visualize results
-        // {
-        //     eg_angleAxis = Eigen::Vector3d(angleAxis[0],angleAxis[1],angleAxis[2]);
-        //     // cout << "after  angleaxis " << eg_angleAxis.transpose() << endl;
-        //     getWarpedEventImage(eg_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);
-        //     cv::imshow("opti", curr_warpped_event_image);
-        //     cv::waitKey(1);
-        // }
-
     }
 
     est_angleAxis = Eigen::Vector3d(angleAxis[0],angleAxis[1],angleAxis[2]);
 
 
-    bool visual_hot_c3 = true; 
+    bool visual_hot_c3 = false; 
     if(visual_hot_c3)
     {
+
+        // cout << "using angle axis " << est_angleAxis.transpose() << endl;
+        // visualize warp events and get a timesurface image with indexs 
+        {
+            cv::Mat cv_timesurface; 
+            cv_timesurface = getImageFromBundle(event_undis_Bundle, PlotOption::TIME_SURFACE);  
+            cv::normalize(cv_timesurface, hot_image_C1, 0,255, cv::NORM_MINMAX, CV_8UC1);
+            cv::cvtColor(hot_image_C1, hot_image_C3, cv::COLOR_GRAY2BGR);
+        }
+
         int sample_green = 1;
         for(int i=0; i<vec_sampled_idx.size() ; i++)
         {
@@ -284,6 +259,7 @@ void System::EstimateMotion_ransca_ceres(double sample_start, double sample_end)
             if(i%sample_green != 0) continue;
             int x = int(event_undis_Bundle.coord(0, vec_sampled_idx[i]));
             int y = int(event_undis_Bundle.coord(1, vec_sampled_idx[i]));
+            if(x>239 || y>179 || x<0 ||y<0) continue;
             hot_image_C3.at<cv::Vec3b>(y,x) = cv::Vec3b(0,255,0);   // green of events before warp 
         }
 
@@ -298,6 +274,7 @@ void System::EstimateMotion_ransca_ceres(double sample_start, double sample_end)
             if(i%sample_green != 0) continue;
             int x = int(event_undis_Bundle.coord(0, i));
             int y = int(event_undis_Bundle.coord(1, i));
+            if(x>239 || y>179 || x<0 ||y<0) continue;
             hot_image_C3.at<cv::Vec3b>(y,x) = cv::Vec3b(0, 165, 255);   // bottom events earlier  
         }
 

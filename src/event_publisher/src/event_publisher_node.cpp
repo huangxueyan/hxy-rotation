@@ -15,7 +15,7 @@
 
 // third party
 #include <opencv2/opencv.hpp>
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 
 // self 
 #include "event_reader.hpp"
@@ -47,7 +47,7 @@ int main(int argc, char** argv)
 
     Event_reader event_reader(yaml, &event_array_pub, &event_image); 
 
-    int sleep_rate = event_reader.sleep_rate;
+    double sleep_rate = event_reader.sleep_rate;
     ros::Rate ros_sleep_rate(sleep_rate); // 1s 10 times 
     while(ros::ok())
     {

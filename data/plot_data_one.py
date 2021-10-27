@@ -2,7 +2,6 @@
 import matplotlib.pyplot as plt 
 import numpy as np 
 
-
 data_str = []
 data_num = []
 
@@ -46,6 +45,31 @@ else:
 plt.show()
 
 
+#%% 
+import numpy as np 
+
+a = [1,2,3]
+b = np.array([-0.048,0.3029,0.95176])
+rotation = np.array([[-0.6949194,  0.7135223,  0.0892915],[-0.1920095, -0.3037848,  0.9331919],[0.6929786,  0.6313483,  0.3481090]])
+
+np.matmul(rotation, b)
 
 
+#%% 
+import numpy as np
+t = 23.326779001 - 23.301785001 
 
+matlab = np.array([-0.00234744, -0.04999, 0.04999])
+matlab_v = matlab / t 
+
+matlab_v
+
+#%% 
+import cv2 
+import numpy as np 
+
+img1 = cv2.imread("/home/hxy/Desktop/images.png", 1)
+img2 = cv2.imread("/home/hxy/Desktop/matlab.png", 1)
+
+
+np.max(img2)

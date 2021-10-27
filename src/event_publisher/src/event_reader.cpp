@@ -22,6 +22,8 @@ Event_reader::Event_reader(std::string yaml,
     fixed_interval = fSettings["fixed_interval"];
     sleep_rate = fSettings["sleep_rate"];
 
+    store2txt = fSettings["store2txt"];
+
     // read(fSettings["groundtruth_dir"]);
 
     string dir = fSettings["groundtruth_dir"];
@@ -58,7 +60,7 @@ bool Event_reader::read(int target_size, double target_interval)
     double start_time = eventData.empty() ? 0: eventData.back().ts.toSec();
 
     dvs_msgs::Event msg;
-    while(getline(openFile, line))
+    while(getline(openFile, line)) // already opened in initial function 
     {
         if(count_liens++ < read_start_lines) continue;
         if(count_liens > read_max_lines)
@@ -89,6 +91,60 @@ bool Event_reader::read(int target_size, double target_interval)
 }
 
 
+/** \brief 
+    \param ptr given ptr, target_size>0 means fixed size reader, target_interval>0 means fixed time reader
+*/
+bool Event_reader::acquire(dvs_msgs::EventArrayPtr ptr)
+{
+    // cout <<"reading events" << endl;
+    // ptr->events.clear();
+    // ptr->events.reserve(event_bundle_size);
+
+    
+    int target_size = using_fixed_time==0? event_bundle_size: 0;
+    double target_interval = using_fixed_time==0? 0 : fixed_interval;
+    
+    dvs_msgs::Event msg;
+
+    // reading 
+    string line, token; 
+    std::vector<std::string> vToken;
+
+    int start_line = max(count_liens, read_start_lines);
+    // double start_time = eventData.empty() ? 0: eventData.back().ts.toSec();
+
+    while(getline(openFile, line)) // already opened in initial function 
+    {
+        if(count_liens++ < read_start_lines) continue;
+        if(count_liens > read_max_lines) break;
+            
+        std::stringstream ss(line); 
+        while (getline(ss, token, ' '))
+            vToken.push_back(token);
+
+        if(vToken.size() == 4)
+        {
+            char* temp; 
+            msg.ts = ros::Time(std::strtod(vToken[0].c_str(), &temp));
+            msg.x = uint16_t(std::strtod(vToken[1].c_str(),&temp));
+            msg.y = uint16_t(std::strtod(vToken[2].c_str(), &temp));
+            msg.polarity = uint8_t(std::strtod(vToken[3].c_str(), &temp));
+            // eventData.emplace_back(msg);
+        }
+        vToken.clear();
+
+        ptr->events.push_back(msg);
+
+        if(target_size > 0 && count_liens-start_line >= target_size) break;
+        if(target_interval > 0 && (ptr->events.back().ts-ptr->events.front().ts).toSec() > target_interval) break;
+    }
+
+    // cout <<"sucesss events " << endl;
+
+    return true;
+
+}
+
 void Event_reader::publish()
 {
     
@@ -103,7 +159,13 @@ void Event_reader::publish()
         read(event_bundle_size, 0);  // read fixed size 
         int current_size = 0;
 
-        est_velocity_file = fstream("/home/hxt/Desktop/hxy-rotation/data/ransac_velocity.txt", ios::out);
+        fstream est_velocity_file;
+
+        if(store2txt)
+        {
+            est_velocity_file = fstream("/home/hxy/Desktop/hxy-rotation/data/seg_events/seg_start_" + 
+                    std::to_string(count_pos) + ".txt", ios::out);
+        }
 
         while(count_pos < eventData.size())
         {
@@ -111,11 +173,19 @@ void Event_reader::publish()
             msg_ptr->header.seq = count_pos;
             msg_ptr->header.stamp = eventData[count_pos].ts;
 
+            if(store2txt)
+            {
+                est_velocity_file << eventData[count_pos].ts
+                                    << " " <<eventData[count_pos].x  
+                                    << " " <<eventData[count_pos].y   
+                                    << " " << (eventData[count_pos].polarity>0) << endl;
+            }
+
             current_size++;
             count_pos++;
-
-            est_velocity_file << t1+t2  <<" " << euler_position.transpose() << endl;
         }
+
+        est_velocity_file.close(); 
 
     } 
     else // fixed interval 
@@ -134,18 +204,15 @@ void Event_reader::publish()
 
     }
 
-
     if(!msg_ptr->events.empty())
     {
         msg_ptr->height = 180;
         msg_ptr->width = 240;
+        event_array_pub_->publish(msg_ptr);
         cout << "current time " << msg_ptr->events[0].ts << 
             ", msg.size " << msg_ptr->events.size() << ", interval " <<(msg_ptr->events.back().ts - msg_ptr->events.front().ts).toSec() << endl;
-        event_array_pub_->publish(msg_ptr);
     }
-
     msg_ptr.reset(); 
-
 }
 
 

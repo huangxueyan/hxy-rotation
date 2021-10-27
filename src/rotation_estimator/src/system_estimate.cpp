@@ -47,29 +47,30 @@ cv::Mat System::getWarpedEventImage(const Eigen::Vector3d & cur_ang_vel, EventBu
 /**
 * \brief given angular veloity, warp local event bundle(t2) to the reference time(t1)
     using kim RAL21, eqation(11), since the ratation angle is ratively small
-* \param cur_ang_vel angleAxis/delta_t from t2>t1, if add minus, it becomes t1->t2. 
+* \param cur_ang_vel angleAxis/delta_t from t1->t2, if multiply minus time, it becomes t2->t1. (AngleAxis inverse only add minus) 
 * \param cur_ang_pos from t2->t0. default set (0,0,0) default, so the output is not rotated. 
-* \param delta_time all events warp this time, if delta_time<0, warp to t0. 
+* \param delta_time all events warp this time, if delta_time<0, warp to t1. 
 */
 void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& eventOut, 
     const Eigen::Vector3d& cur_ang_vel, const Eigen::Vector3d& cur_ang_pos, double delta_time)
 {
+    // cout << "projecting " << endl;
     // the theta of rotation axis
     float ang_vel_norm = cur_ang_vel.norm(); 
 
     Eigen::Matrix3Xd ang_vel_hat_mul_x, ang_vel_hat_sqr_mul_x;
     
-    ang_vel_hat_mul_x.resize(3,eventIn.size);     // row, col 
-    ang_vel_hat_sqr_mul_x.resize(3,eventIn.size); 
     
-    // equation 11 
-    ang_vel_hat_mul_x.row(0) = -cur_ang_vel(2)*eventIn.coord_3d.row(1) + cur_ang_vel(1)*eventIn.coord_3d.row(2);
-    ang_vel_hat_mul_x.row(1) =  cur_ang_vel(2)*eventIn.coord_3d.row(0) - cur_ang_vel(0)*eventIn.coord_3d.row(2);
-    ang_vel_hat_mul_x.row(2) = -cur_ang_vel(1)*eventIn.coord_3d.row(0) + cur_ang_vel(0)*eventIn.coord_3d.row(1);
+    /** equation 11 of kim */ 
+    // ang_vel_hat_mul_x.resize(3,eventIn.size);     // row, col 
+    // ang_vel_hat_sqr_mul_x.resize(3,eventIn.size); 
+    // ang_vel_hat_mul_x.row(0) = -cur_ang_vel(2)*eventIn.coord_3d.row(1) + cur_ang_vel(1)*eventIn.coord_3d.row(2);
+    // ang_vel_hat_mul_x.row(1) =  cur_ang_vel(2)*eventIn.coord_3d.row(0) - cur_ang_vel(0)*eventIn.coord_3d.row(2);
+    // ang_vel_hat_mul_x.row(2) = -cur_ang_vel(1)*eventIn.coord_3d.row(0) + cur_ang_vel(0)*eventIn.coord_3d.row(1);
 
-    ang_vel_hat_sqr_mul_x.row(0) = -cur_ang_vel(2)*ang_vel_hat_mul_x.row(1) + cur_ang_vel(1)*ang_vel_hat_mul_x.row(2);
-    ang_vel_hat_sqr_mul_x.row(1) =  cur_ang_vel(2)*ang_vel_hat_mul_x.row(0) - cur_ang_vel(0)*ang_vel_hat_mul_x.row(2);
-    ang_vel_hat_sqr_mul_x.row(2) = -cur_ang_vel(1)*ang_vel_hat_mul_x.row(0) + cur_ang_vel(0)*ang_vel_hat_mul_x.row(1);
+    // ang_vel_hat_sqr_mul_x.row(0) = -cur_ang_vel(2)*ang_vel_hat_mul_x.row(1) + cur_ang_vel(1)*ang_vel_hat_mul_x.row(2);
+    // ang_vel_hat_sqr_mul_x.row(1) =  cur_ang_vel(2)*ang_vel_hat_mul_x.row(0) - cur_ang_vel(0)*ang_vel_hat_mul_x.row(2);
+    // ang_vel_hat_sqr_mul_x.row(2) = -cur_ang_vel(1)*ang_vel_hat_mul_x.row(0) + cur_ang_vel(0)*ang_vel_hat_mul_x.row(1);
 
 
     eventOut.CopySize(eventIn);
@@ -86,31 +87,35 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
             vec_delta_time.setConstant(delta_time);
             // cout <<"using const delta " << delta_time << endl;
         }
-        // else{ cout <<"using not const delta " << delta_time << endl; }
-        
-        
-        // second order version;
-        // so x_t1 = x_t2*R{t2->t1}. 
-        eventOut.coord_3d = eventIn.coord_3d
-                                    + Eigen::MatrixXd( 
-                                        ang_vel_hat_mul_x.array().rowwise() 
-                                        * (vec_delta_time.transpose().array())
-                                        + ang_vel_hat_sqr_mul_x.array().rowwise() 
-                                        * (0.5f * vec_delta_time.transpose().array().square()) );
-        // cout << "delta_t " << delta_time.topRows(5).transpose() << endl;
-
-        // first order version 
-        // event_warpped_Bundle.coord_3d = event_undis_Bundle.coord_3d
+                
+        // kim second order version;
+        // eventOut.coord_3d = eventIn.coord_3d
         //                             + Eigen::MatrixXd( 
         //                                 ang_vel_hat_mul_x.array().rowwise() 
-        //                                 * delta_time.transpose().array());
+        //                                 * (-vec_delta_time.transpose().array())
+        //                                 + ang_vel_hat_sqr_mul_x.array().rowwise() 
+        //                                 * (0.5f * vec_delta_time.transpose().array().square()) );
 
-        // cout << "angle vec: " << (cur_ang_vel.array()/3.14 * 180).transpose() << " degree/s" << endl;
-        // cout << "ang_vel_hat_mul_x: \n"<< ang_vel_hat_mul_x.topLeftCorner(3,5) << endl;
-        // cout << "delta time: \n" << delta_time.topRows(5).transpose()<< endl;
-        // cout << "ang_vel_hat_mul_x: back \n"<< ang_vel_hat_mul_x.topRightCorner(3,5) << endl;
-        // cout << "event_warpped_Bundle.coord_3d: \n " << event_warpped_Bundle.coord_3d.topLeftCorner(3,5) << endl;
-        
+        // cout << "previous \n" << eventOut.coord_3d.bottomRightCorner(3,5) <<  endl;
+ 
+        // rodrigues version wiki
+        Eigen::Matrix<double,3,1> axis = cur_ang_vel.normalized();
+        Eigen::VectorXd angle_vec = -vec_delta_time * ang_vel_norm ;
+
+        Eigen::VectorXd cos_angle_vec = angle_vec.array().cos();
+        Eigen::VectorXd sin_angle_vec = angle_vec.array().sin();
+
+        Eigen::Matrix3Xd first = eventIn.coord_3d.array().rowwise() * cos_angle_vec.transpose().array(); 
+
+        Eigen::Matrix3Xd second = (-eventIn.coord_3d.array().colwise().cross(axis)).array().rowwise() * sin_angle_vec.transpose().array();
+
+        Eigen::VectorXd third1 = axis.transpose() * eventIn.coord_3d;
+        Eigen::VectorXd third2 = third1.array() * (1-cos_angle_vec.array()).array();;
+        Eigen::Matrix3Xd third = axis * third2.transpose();
+    
+        eventOut.coord_3d = first + second + third; 
+        // cout << "last \n " << eventOut.coord_3d.bottomRightCorner(3,5) <<  endl;
+
     }
 
     if(cur_ang_pos.norm()/3.14 * 180 > 0.1) 

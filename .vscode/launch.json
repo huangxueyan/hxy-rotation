@@ -15,8 +15,8 @@
         {
             "name": "ROS: Launch",
             "request": "launch",
-            "target": "/home/hxt/Desktop/hxy-rotation/src/rotation_estimator/launch/estimator.launch",
-            // "target": "/home/hxt/Desktop/hxy-rotation/src/event_publisher/launch/event_publish.launch",
+            "target": "/home/hxy/Desktop/hxy-rotation/src/rotation_estimator/launch/estimator.launch",
+            // "target": "/home/hxy/Desktop/hxy-rotation/src/event_publisher/launch/event_publish.launch",
             "type": "ros"
         }
     ]

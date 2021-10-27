@@ -8,7 +8,8 @@
 #include <ros/ros.h>
 #include "callbacks.hpp"
 #include "system.hpp"
-
+#include "event_reader.hpp"
+// #include <event_publisher/event_reade.hpp>
 
 
 using namespace std; 
@@ -29,18 +30,36 @@ int main(int argc, char** argv)
 
     System* sys = new System(yaml);
 
+    /* ROS version */
     // ImageGrabber imageGrabber(&sys); 
     // ros::Subscriber image_sub = nh.subscribe("/dvs/image_raw", 10, &ImageGrabber::GrabImage, &imageGrabber);
+    // EventGrabber eventGrabber(sys);
+    // ros::Subscriber event_sub = nh.subscribe("/dvs/events", 10, &EventGrabber::GrabEvent, &eventGrabber);
+    // // PoseGrabber poseGrabber(sys);
+    // // ros::Subscriber pose_sub = nh.subscribe("/optitrack/davis", 10, &PoseGrabber::GrabPose, &poseGrabber);
+    // ros::spin();
     
-    EventGrabber eventGrabber(sys);
-    ros::Subscriber event_sub = nh.subscribe("/dvs/events", 10, &EventGrabber::GrabEvent, &eventGrabber);
 
-    // PoseGrabber poseGrabber(sys);
-    // ros::Subscriber pose_sub = nh.subscribe("/optitrack/davis", 10, &PoseGrabber::GrabPose, &poseGrabber);
+    /** TXT version */ 
+    string reader_yaml;  // system configration 
+    nh.param<string>("reader_yaml", reader_yaml, "");
+    Event_reader event_reader(reader_yaml); 
+    while (true)
+    {
+        // read data 
+        dvs_msgs::EventArrayPtr msg_ptr = dvs_msgs::EventArrayPtr(new dvs_msgs::EventArray());
+        event_reader.acquire(msg_ptr);
 
+        if(msg_ptr==nullptr || msg_ptr->events.empty() )
+        {
+            cout << "wrong reading events, msgptr==null" << int(msg_ptr==nullptr) << "empty events " << int(msg_ptr->events.empty()) << endl;
+            break;
+        }
 
-    ros::spin();
-    
+        sys->pushEventData(msg_ptr->events);
+        // break;
+    }
+        
     cout << "shutdown rotation estimator" << endl;
     return 0;
 }

@@ -31,8 +31,11 @@ public:
     bool read(int event_size = 0, double event_interval = 0);
     void publish();
     void render();    
-
     double sleep_rate;
+
+
+    // for txt 
+    bool acquire(dvs_msgs::EventArrayPtr ptr);
 
 
 private:
@@ -53,6 +56,7 @@ private:
     double delta_time; // 
     double curr_time;  
 
+    int store2txt; 
     int using_fixed_time; 
     double fixed_interval;
 

@@ -22,6 +22,7 @@ System::System(const string& yaml)
 
     using_gt = false;
     vec_vec_eventData_iter = 0;
+    seq_count = 1;
 
     // ros msg 
     // vec_last_event_idx = 0;
@@ -61,8 +62,8 @@ System::System(const string& yaml)
     curr_warpped_event_image_gt = cv::Mat(camera.height,camera.width, CV_32F); 
 
     // output file 
-    est_velocity_file = fstream("/home/hxt/Desktop/hxy-rotation/data/ransac_velocity.txt", ios::out);
-    // est_velocity_file_quat = fstream("/home/hxt/Desktop/hxy-rotation/data/evo_data/ransac_velocity.txt", ios::out);
+    est_velocity_file = fstream("/home/hxy/Desktop/hxy-rotation/data/ransac_velocity.txt", ios::out);
+    // est_velocity_file_quat = fstream("/home/hxy/Desktop/hxy-rotation/data/evo_data/ransac_velocity.txt", ios::out);
 
 
     // thread in background 
@@ -85,7 +86,6 @@ System::~System()
 }
 
 
-
 /**
 * \brief undistr events, and save the data to event_undis_Bundle (2d and 3d).
 */
@@ -101,13 +101,13 @@ void System::undistortEvents()
         raw_event_points[i] = cv::Point2f(eventBundle.coord(0,i),eventBundle.coord(1,i));
     
     // gt data using gt
-        // cv::undistortPoints(raw_event_points, undis_event_points, 
-        //         camera.cameraMatrix, camera.distCoeffs, cv::noArray(), camera.cameraMatrix);
+        cv::undistortPoints(raw_event_points, undis_event_points, 
+                camera.cameraMatrix, camera.distCoeffs, cv::noArray(), camera.cameraMatrix);
         
         // (0,0,0,0)
-        cv::Mat undis = (cv::Mat_<double>(1,4) << 0, 0, 0 ,0 );
-        cv::undistortPoints(raw_event_points, undis_event_points, 
-                camera.cameraMatrix,undis , cv::noArray(), camera.cameraMatrix);
+        // cv::Mat undis = (cv::Mat_<double>(1,4) << 0, 0, 0 ,0 );
+        // cv::undistortPoints(raw_event_points, undis_event_points, 
+        //         camera.cameraMatrix,undis , cv::noArray(), camera.cameraMatrix);
     
     
     // convert points to cv_mat 
@@ -208,7 +208,25 @@ cv::Mat System::getImageFromBundle(EventBundle& cur_event_bundle, const PlotOpti
             image.at<unsigned short>(point_temp) += 1;
         }
         break;
-    
+    case PlotOption::U8C1_EVNET_IMAGE:
+        // cout << "enter case U16C1_EVNET_IMAGE" << endl;
+        image = cv::Mat(height, width, CV_8UC1);
+        image = cv::Scalar(0);
+
+        for(int i=0; i<cur_event_bundle.coord.cols(); i++)
+        {
+            int x = cur_event_bundle.coord.col(i)[0];
+            int y = cur_event_bundle.coord.col(i)[1]; 
+
+            if(cur_event_bundle.isInner(i) < 1) continue;
+
+            // if(x >= width  ||  x < 0 || y >= height || y < 0 ) 
+            //     cout << "x, y" << x << "," << y << endl;
+
+            cv::Point2i point_temp(x,y);
+            image.at<unsigned char>(point_temp) += 1;
+        }
+        break;
     case PlotOption::TIME_SURFACE:
         // cout << "build time surface " << endl;
         // cv_3D_surface_index.setTo(0); cv_3D_surface_index_count.setTo(0); 
@@ -329,7 +347,6 @@ void System::Run()
     }
 
 
-
     // cout << "----processing event bundle------ size: " <<eventBundle.size  << 
         // ", vec leave:" <<vec_vec_eventData.size() - vec_vec_eventData_iter << endl; 
 
@@ -338,35 +355,32 @@ void System::Run()
 
 
     /* get local bundle sharper using gt*/ 
-    if(using_gt)
-    {
-        if(vec_gt_poseData.size()< 10) gt_angleAxis.setConstant(0);
-        else
-        {
-            Eigen::Matrix3d R_t1_t2 = get_local_rotation_b2f();
-            Eigen::AngleAxisd ang_axis(R_t1_t2);
-            double _delta_time = eventBundle.time_delta[eventBundle.time_delta.rows()-1]; 
-            ang_axis.angle() /= _delta_time;  // get angular velocity
-            gt_angleAxis = ang_axis.axis() * ang_axis.angle();
+    // if(using_gt)
+    // {
+    //     if(vec_gt_poseData.size()< 10) gt_angleAxis.setConstant(0);
+    //     else
+    //     {
+    //         Eigen::Matrix3d R_t1_t2 = get_local_rotation_b2f();
+    //         Eigen::AngleAxisd ang_axis(R_t1_t2);
+    //         double _delta_time = eventBundle.time_delta[eventBundle.time_delta.rows()-1]; 
+    //         ang_axis.angle() /= _delta_time;  // get angular velocity
+    //         gt_angleAxis = ang_axis.axis() * ang_axis.angle();
 
-            // display gt
-            getWarpedEventImage(ang_axis.axis() * ang_axis.angle(), 
-                event_warpped_Bundle_gt).convertTo(curr_warpped_event_image, CV_32F);
-        }
-    }
+    //         // display gt
+    //         getWarpedEventImage(ang_axis.axis() * ang_axis.angle(), 
+    //             event_warpped_Bundle_gt).convertTo(curr_warpped_event_image, CV_32F);
+    //     }
+    // }
 
     /* get local bundle sharper using self derived iteration CM method */ 
-    // EstimateMotion_kim();
+    EstimateMotion_kim();
 
     /* get local bundle sharper using time residual, all warp to t0 */
-    est_angleAxis = Eigen::Vector3d(0,0,0); // set to 0. 
-    // cv::waitKey(0);
-    // EstimateMotion_ransca_warp2bottom(0.2, 0.99, 0.1);
-
     // est_angleAxis = Eigen::Vector3d(0,0,0); // set to 0. 
+
     // EstimateMotion_ransca_ceres(0, 0.5);
-    EstimateMotion_ransca_ceres(0, 0.99);
-    EstimateMotion_ransca_ceres(0, 0.99);
+    // EstimateMotion_ransca_ceres(0, 0.99);
+    // EstimateMotion_ransca_ceres(0, 0.99);
 
     // EstimateMotion_ransca_ceres(0.4, 0.7);
     // EstimateMotion_ransca_ceres(0.3, 0.5);
@@ -397,29 +411,18 @@ void System::Run()
 void System::save_velocity()
 {
     // for velocity 
-    double timestamp =  (eventBundle.last_tstamp - beginTS).toSec();
     double delta_time = (eventBundle.last_tstamp - eventBundle.first_tstamp).toSec(); 
 
     // minus means from t1->t2. 
-    double angle = (est_angleAxis * delta_time).norm();
-    Eigen::AngleAxisd ag_pos =  Eigen::AngleAxisd(angle, (est_angleAxis * delta_time) / angle);
-    Eigen::Quaterniond q = Eigen::Quaterniond(ag_pos);
-    Eigen::Vector3d euler_position = toEulerAngles(q) / delta_time; // back to velocity
+    // double angle = (est_angleAxis * delta_time).norm();
+    // Eigen::AngleAxisd ag_pos =  Eigen::AngleAxisd(angle, (est_angleAxis * delta_time) / angle);
+    // Eigen::Quaterniond q = Eigen::Quaterniond(ag_pos);
+    // Eigen::Vector3d euler_position = toEulerAngles(q) / delta_time; // back to velocity
     
-    // get middle timestamp of event bundle, wrong, because we warp to t0, so velocity is v in t0.
-
-    double t1 = eventBundle.first_tstamp.toSec(); 
-    double t2 = eventBundle.time_delta(eventBundle.size/10);
-    est_velocity_file << t1+t2  <<" " << euler_position.transpose() << endl;
-    // est_velocity_file << eventBundle.first_tstamp.toSec()  <<" " << euler_position.transpose() << endl;
+    // WARNING, you should use ros timestamps not double (cout for double is 6 valid numbers)
+    // est_velocity_file << seq_count++ <<" " << eventBundle.first_tstamp << " " << eventBundle.last_tstamp << " " << euler_position.transpose() << endl;
     
-    // evo estimation
-    // double angle2 = est_angleAxis.norm();
-    // Eigen::AngleAxisd ag_pos2 =  Eigen::AngleAxisd(angle2, est_angleAxis/ angle2);
-    // Eigen::Quaterniond q2 = Eigen::Quaterniond(ag_pos2);
-    // est_velocity_file_quat << eventBundle.last_tstamp << " 0 0 0 " << q2.x() << " "
-    //     << q2.y() << " "  << q2.z() << " " << q2.w() << endl;
-    // cout << "time "  << time << " " << euler_position.transpose()  <<  endl; 
+    est_velocity_file << seq_count++ <<" " << eventBundle.first_tstamp << " " << eventBundle.last_tstamp << " " << -est_angleAxis.transpose() << endl;
 
 }
 
@@ -430,7 +433,7 @@ void System::pushEventData(const std::vector<dvs_msgs::Event>& ros_vec_event)
 {
     // que_vec_eventData.push(ros_vec_event); 
     vec_vec_eventData.push_back(ros_vec_event);
-    // cout << "push to vec_vec_eventData " << endl;  
+    // cout << " to vec_vec_eventData " << endl;  
     
     Run(); 
 }
