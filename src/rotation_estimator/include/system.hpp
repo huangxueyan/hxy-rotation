@@ -62,10 +62,10 @@ public:
     void Run();
     void undistortEvents();
     cv::Mat getWarpedEventImage(const Eigen::Vector3d & temp_ang_vel,EventBundle& event_out,
-        const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR); 
+        const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR, bool ref_t1 = false); 
 
     void getWarpedEventPoints(const EventBundle& eventIn, EventBundle& eventOut,
-        const Eigen::Vector3d& cur_ang_vel, const Eigen::Vector3d& cur_ang_pos=Eigen::Vector3d::Zero(), double delta_time=-1);
+        const Eigen::Vector3d& cur_ang_vel,const Eigen::Vector3d& cur_ang_pos=Eigen::Vector3d::Zero(), double delta_time=-1,  bool ref_t1=false);
     cv::Mat getImageFromBundle(EventBundle& eventBundle,
         const PlotOption option = PlotOption::U16C3_EVNET_IMAGE_COLOR, bool is_mapping=false);
 
@@ -75,6 +75,7 @@ public:
     void localCM(); 
 
     void EstimateMotion_kim();  
+    void EstimateMotion_CM_ceres();
     void EstimateMotion_ransca_ceres(double sample_start, double sample_end);
     // void EstimateMotion_ransca_once(double sample_ratio, double warp_time_ratio, double opti_steps);
     void EstimateMotion_ransca_warp2bottom(double sample_start, double sample_end, double opti_steps);

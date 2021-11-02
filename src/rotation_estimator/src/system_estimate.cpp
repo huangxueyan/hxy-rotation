@@ -9,13 +9,13 @@ using namespace std;
 /**
 * \brief given angular veloity(t1->t2), warp local event bundle become shaper
 */
-cv::Mat System::getWarpedEventImage(const Eigen::Vector3d & cur_ang_vel, EventBundle& event_out,  const PlotOption& option)
+cv::Mat System::getWarpedEventImage(const Eigen::Vector3d & cur_ang_vel, EventBundle& event_out,  const PlotOption& option, bool ref_t1)
 {
     // cout << "get warpped event image " << endl;
     // cout << "eventUndistorted.coord.cols() " << event_undis_Bundle.coord.cols() << endl;
     /* warp local events become sharper */
     event_out.CopySize(event_undis_Bundle);
-    getWarpedEventPoints(event_undis_Bundle, event_out, cur_ang_vel); 
+    getWarpedEventPoints(event_undis_Bundle, event_out, cur_ang_vel, Eigen::Vector3d::Zero(), -1, ref_t1); 
     event_out.Projection(camera.eg_cameraMatrix);
     event_out.DiscriminateInner(camera.width, camera.height);
     // getImageFromBundle(event_out, option, false).convertTo(curr_warpped_event_image, CV_32F);
@@ -52,7 +52,7 @@ cv::Mat System::getWarpedEventImage(const Eigen::Vector3d & cur_ang_vel, EventBu
 * \param delta_time all events warp this time, if delta_time<0, warp to t1. 
 */
 void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& eventOut, 
-    const Eigen::Vector3d& cur_ang_vel, const Eigen::Vector3d& cur_ang_pos, double delta_time)
+    const Eigen::Vector3d& cur_ang_vel, const Eigen::Vector3d& cur_ang_pos, double delta_time,  bool ref_t1 )
 {
     // cout << "projecting " << endl;
     // the theta of rotation axis
@@ -82,6 +82,8 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
     else
     {   
         Eigen::VectorXd vec_delta_time = eventBundle.time_delta;  
+        if(ref_t1) vec_delta_time = eventBundle.time_delta.array() - eventBundle.time_delta(eventBundle.size-1);  
+
         if(delta_time > 0)  // using self defined deltime. 
         {
             vec_delta_time.setConstant(delta_time);

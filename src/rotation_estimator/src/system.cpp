@@ -38,8 +38,9 @@ System::System(const string& yaml)
     cv::namedWindow("curr_warpped_event_image", cv::WINDOW_NORMAL);
     // cv::namedWindow("curr_warpped_event_image_gt", cv::WINDOW_NORMAL);
     // cv::namedWindow("curr_map_image", cv::WINDOW_NORMAL);
-     cv::namedWindow("hot_image_C3", cv::WINDOW_NORMAL);
-     cv::namedWindow("timesurface", cv::WINDOW_NORMAL);
+    //  cv::namedWindow("hot_image_C3", cv::WINDOW_NORMAL);
+    //  cv::namedWindow("timesurface_early", cv::WINDOW_NORMAL);
+    //  cv::namedWindow("timesurface_later", cv::WINDOW_NORMAL);
     //  cv::namedWindow("opti", cv::WINDOW_NORMAL);
 
     // before processing 
@@ -62,7 +63,8 @@ System::System(const string& yaml)
     curr_warpped_event_image_gt = cv::Mat(camera.height,camera.width, CV_32F); 
 
     // output file 
-    est_velocity_file = fstream("/home/hxy/Desktop/hxy-rotation/data/ransac_velocity.txt", ios::out);
+    string output_dir = fSetting["output_dir"];
+    est_velocity_file = fstream(output_dir, ios::out);
     // est_velocity_file_quat = fstream("/home/hxy/Desktop/hxy-rotation/data/evo_data/ransac_velocity.txt", ios::out);
 
 
@@ -355,7 +357,7 @@ void System::Run()
 
 
     /* get local bundle sharper using gt*/ 
-    // if(using_gt)
+    // if(using_gt) TODO reading imu data and calculate gt
     // {
     //     if(vec_gt_poseData.size()< 10) gt_angleAxis.setConstant(0);
     //     else
@@ -373,13 +375,17 @@ void System::Run()
     // }
 
     /* get local bundle sharper using self derived iteration CM method */ 
-    EstimateMotion_kim();
+    // est_angleAxis = Eigen::Vector3d( 2.54385147324, 1.80455782148, -11.2715619324); // set to 0. 
+    // EstimateMotion_kim();
+
+    // EstimateMotion_CM_ceres();
 
     /* get local bundle sharper using time residual, all warp to t0 */
-    // est_angleAxis = Eigen::Vector3d(0,0,0); // set to 0. 
 
     // EstimateMotion_ransca_ceres(0, 0.5);
+    EstimateMotion_ransca_ceres(0, 0.99);
     // EstimateMotion_ransca_ceres(0, 0.99);
+
     // EstimateMotion_ransca_ceres(0, 0.99);
 
     // EstimateMotion_ransca_ceres(0.4, 0.7);
@@ -546,7 +552,7 @@ void System::visualize()
         // cv::imshow("curr_warpped_event_image_gt", curr_warpped_event_image_gt);
 
         // cv::imshow("curr_map_image", curr_map_image);
-        cv::imshow("hot_image_C3", hot_image_C3);
+        // cv::imshow("hot_image_C3", hot_image_C3);
 
         cv::waitKey(1);
 }

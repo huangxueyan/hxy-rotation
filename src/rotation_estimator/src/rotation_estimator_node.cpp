@@ -30,7 +30,7 @@ int main(int argc, char** argv)
 
     System* sys = new System(yaml);
 
-    /* ROS version */
+    /* Event ROS version */
     // ImageGrabber imageGrabber(&sys); 
     // ros::Subscriber image_sub = nh.subscribe("/dvs/image_raw", 10, &ImageGrabber::GrabImage, &imageGrabber);
     // EventGrabber eventGrabber(sys);
@@ -40,10 +40,8 @@ int main(int argc, char** argv)
     // ros::spin();
     
 
-    /** TXT version */ 
-    string reader_yaml;  // system configration 
-    nh.param<string>("reader_yaml", reader_yaml, "");
-    Event_reader event_reader(reader_yaml); 
+    /** Event TXT version */ 
+    Event_reader event_reader(yaml); 
     while (true)
     {
         // read data 

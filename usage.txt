@@ -1,0 +1,2 @@
+cd /home/hxy/Desktop/Event-ST-PPP/
+python src/eval.py -p /home/hxy/Desktop/hxy-rotation/data/poster_rotation -e ransac_velocity.txt 

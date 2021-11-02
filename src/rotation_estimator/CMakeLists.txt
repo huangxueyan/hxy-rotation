@@ -155,7 +155,8 @@ add_executable(${PROJECT_NAME}_node
         src/system.cpp
         src/numerics.cpp
         src/system_estimate.cpp                 # store utils for motion estimation  
-        src/system_estimate_ransca.cpp          # ransac method with self defined gradient function, RMSPros
+        # src/system_estimate_ransca.cpp          # ransac method with self defined gradient function, RMSPros
+        src/system_estimate_CM_ceres.cpp
         src/system_estimate_ransca_ceres.cpp    # ransac method with using ceres
         # src/system_estimate_ransca_ceres_angle.cpp  
         src/system_estimate_kim.cpp)            # using kim method with self defined gradient function, R
