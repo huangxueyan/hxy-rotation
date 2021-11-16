@@ -156,9 +156,9 @@ add_executable(${PROJECT_NAME}_node
         src/numerics.cpp
         src/system_estimate.cpp                 # store utils for motion estimation  
         # src/system_estimate_ransca.cpp          # ransac method with self defined gradient function, RMSPros
-        src/system_estimate_CM_ceres.cpp
-        src/system_estimate_ransca_ceres.cpp    # ransac method with using ceres
-        # src/system_estimate_ransca_ceres_angle.cpp  
+        # src/system_estimate_CM_ceres.cpp
+        src/system_estimate_ransac_doublewarp_ceres.cpp  # timesurface method with double warp using ceres
+        src/system_estimate_ransac_samples_ceres.cpp       # timesurface ransac method using previous timesurface
         src/system_estimate_kim.cpp)            # using kim method with self defined gradient function, R
 
 ## Rename C++ executable without prefix

@@ -76,9 +76,11 @@ public:
 
     void EstimateMotion_kim();  
     void EstimateMotion_CM_ceres();
-    void EstimateMotion_ransca_ceres(double sample_start, double sample_end);
+    void EstimateMotion_ransca_doublewarp_ceres(double sample_start, double sample_end);
+    void EstimateMotion_ransca_samples_ceres(double sample_start, double sample_end);
+    void EstimateMotion_KS_ceres();
     // void EstimateMotion_ransca_once(double sample_ratio, double warp_time_ratio, double opti_steps);
-    void EstimateMotion_ransca_warp2bottom(double sample_start, double sample_end, double opti_steps);
+    // void EstimateMotion_ransca_warp2bottom(double sample_start, double sample_end, double opti_steps);
 
     Eigen::Vector3d DeriveErrAnalytic(const Eigen::Vector3d &vel_angleAxis, const Eigen::Vector3d &pos_angleAxis);
     

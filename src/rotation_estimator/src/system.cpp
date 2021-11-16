@@ -260,6 +260,29 @@ cv::Mat System::getImageFromBundle(EventBundle& cur_event_bundle, const PlotOpti
         // cout << "size " << eventBundle.time_delta.size() << endl; 
         // cout << "size " << cur_event_bundle.coord.cols() << endl; 
         break; 
+    case PlotOption::F32C1_EVENT_COUNT: 
+        image = cv::Mat(height, width, CV_32FC1);
+        image = cv::Scalar(0);
+
+        for(int i=0; i<cur_event_bundle.size; i++)
+        {
+
+            int x = std::floor(cur_event_bundle.coord.col(i)[0]);
+            int y = std::floor(cur_event_bundle.coord.col(i)[1]);
+            float dx = float(cur_event_bundle.coord.col(i)[0]) - float(x);
+            float dy = float(cur_event_bundle.coord.col(i)[1]) - float(y);
+
+            if(cur_event_bundle.isInner(i) < 1) continue;
+            // if(x >= width-1  ||  x < 0 || y >= height-1 || y < 0 ) 
+            //     cout << "x, y" << x << "," << y << endl;
+
+            image.at<float>(y,x)     += (1-dx)*(1-dy);
+            image.at<float>(y,x+1)   += (dx)*(1-dy);
+            image.at<float>(y+1,x)   += (1-dx)*(dy);
+            image.at<float>(y+1,x+1) += (dx)*(dy);
+        }
+
+        break;
     default:
         cout << "default choice " << endl;
         break;
@@ -355,42 +378,32 @@ void System::Run()
     /* undistort events */ 
     undistortEvents();
 
-
-    /* get local bundle sharper using gt*/ 
-    // if(using_gt) TODO reading imu data and calculate gt
-    // {
-    //     if(vec_gt_poseData.size()< 10) gt_angleAxis.setConstant(0);
-    //     else
-    //     {
-    //         Eigen::Matrix3d R_t1_t2 = get_local_rotation_b2f();
-    //         Eigen::AngleAxisd ang_axis(R_t1_t2);
-    //         double _delta_time = eventBundle.time_delta[eventBundle.time_delta.rows()-1]; 
-    //         ang_axis.angle() /= _delta_time;  // get angular velocity
-    //         gt_angleAxis = ang_axis.axis() * ang_axis.angle();
-
-    //         // display gt
-    //         getWarpedEventImage(ang_axis.axis() * ang_axis.angle(), 
-    //             event_warpped_Bundle_gt).convertTo(curr_warpped_event_image, CV_32F);
-    //     }
-    // }
-
     /* get local bundle sharper using self derived iteration CM method */ 
-    // est_angleAxis = Eigen::Vector3d( 2.54385147324, 1.80455782148, -11.2715619324); // set to 0. 
+    // est_angleAxis = Eigen::Vector3d(2.0840802, 2.6272788, 4.7796245); // set to 0. 
     // EstimateMotion_kim();
 
+    // est_angleAxis = Eigen::Vector3d(0.1,0,0); // set to 0. 
     // EstimateMotion_CM_ceres();
 
     /* get local bundle sharper using time residual, all warp to t0 */
-
-    // EstimateMotion_ransca_ceres(0, 0.5);
-    EstimateMotion_ransca_ceres(0, 0.99);
-    // EstimateMotion_ransca_ceres(0, 0.99);
-
-    // EstimateMotion_ransca_ceres(0, 0.99);
-
-    // EstimateMotion_ransca_ceres(0.4, 0.7);
-    // EstimateMotion_ransca_ceres(0.3, 0.5);
-    // EstimateMotion_ransca_ceres(0.0, 0.30);
+    // if(vec_vec_eventData_iter == 1)
+    // {
+    //     cout << "init using self_boost" << endl;
+    //     est_angleAxis = Eigen::Vector3d(0,0,0); // set to 0. 
+    //     EstimateMotion_ransca_doublewarp_ceres(0, 0.99);
+    //     store_subpixel_template(est_angleAxis);  // TODO 
+    // }
+    // else{
+    //     cout << "using previous template " << endl;
+    //     EstimateMotion_ransca_samples_ceres(0, 0.99);
+    //     store_subpixel_template(est_angleAxis);     
+    // }
+    // 
+    est_angleAxis = Eigen::Vector3d(0,0,0); // set to 0. 
+    // est_angleAxis = Eigen::Vector3d(-1.8330431 ,-1.7431492,  1.6033788); // set to gt. 
+    
+    EstimateMotion_ransca_doublewarp_ceres(0.2, 1);
+    // EstimateMotion_ransca_samples_ceres(0.2, 1);
 
 
     // save gt date 
@@ -554,7 +567,7 @@ void System::visualize()
         // cv::imshow("curr_map_image", curr_map_image);
         // cv::imshow("hot_image_C3", hot_image_C3);
 
-        cv::waitKey(1);
+        cv::waitKey(10);
 }
 
 

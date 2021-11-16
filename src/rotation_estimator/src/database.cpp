@@ -248,7 +248,7 @@ void EventBundle::Projection(Eigen::Matrix3d& K)
     coord.row(1) = coord_3d.row(1).array() / coord_3d.row(2).array() * K(1,1) + K(1,2);
 
     // TODO add gaussian 
-    coord = coord.array().round(); // pixel wise 
+    // coord = coord.array().round(); // pixel wise 
 
 
     // cout << "  projecting sucess " << endl;

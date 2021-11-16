@@ -68,6 +68,7 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
     // ang_vel_hat_mul_x.row(1) =  cur_ang_vel(2)*eventIn.coord_3d.row(0) - cur_ang_vel(0)*eventIn.coord_3d.row(2);
     // ang_vel_hat_mul_x.row(2) = -cur_ang_vel(1)*eventIn.coord_3d.row(0) + cur_ang_vel(0)*eventIn.coord_3d.row(1);
 
+
     // ang_vel_hat_sqr_mul_x.row(0) = -cur_ang_vel(2)*ang_vel_hat_mul_x.row(1) + cur_ang_vel(1)*ang_vel_hat_mul_x.row(2);
     // ang_vel_hat_sqr_mul_x.row(1) =  cur_ang_vel(2)*ang_vel_hat_mul_x.row(0) - cur_ang_vel(0)*ang_vel_hat_mul_x.row(2);
     // ang_vel_hat_sqr_mul_x.row(2) = -cur_ang_vel(1)*ang_vel_hat_mul_x.row(0) + cur_ang_vel(0)*ang_vel_hat_mul_x.row(1);
@@ -94,11 +95,14 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
         // eventOut.coord_3d = eventIn.coord_3d
         //                             + Eigen::MatrixXd( 
         //                                 ang_vel_hat_mul_x.array().rowwise() 
-        //                                 * (-vec_delta_time.transpose().array())
+        //                                 * (-vec_delta_time.transpose().array()));
         //                                 + ang_vel_hat_sqr_mul_x.array().rowwise() 
         //                                 * (0.5f * vec_delta_time.transpose().array().square()) );
-
-        // cout << "previous \n" << eventOut.coord_3d.bottomRightCorner(3,5) <<  endl;
+        // cout << "usingg est" << cur_ang_vel.transpose() << endl;
+        // cout << "original  " << eventIn.coord_3d.topLeftCorner(3,5)<< endl;
+        // cout << "ang_vel_hat_mul_x " << ang_vel_hat_mul_x.topLeftCorner(3,5)<< endl;
+        // cout << "delta time " << vec_delta_time.topRows(5).transpose() << endl;
+        // cout << "final \n" << eventOut.coord_3d.topLeftCorner(3,5) <<  endl;
  
         // rodrigues version wiki
         Eigen::Matrix<double,3,1> axis = cur_ang_vel.normalized();
