@@ -39,9 +39,9 @@ System::System(const string& yaml)
     // cv::namedWindow("curr_warpped_event_image_gt", cv::WINDOW_NORMAL);
     // cv::namedWindow("curr_map_image", cv::WINDOW_NORMAL);
     //  cv::namedWindow("hot_image_C3", cv::WINDOW_NORMAL);
-    //  cv::namedWindow("timesurface_early", cv::WINDOW_NORMAL);
-    //  cv::namedWindow("timesurface_later", cv::WINDOW_NORMAL);
-    //  cv::namedWindow("opti", cv::WINDOW_NORMAL);
+     cv::namedWindow("timesurface_early", cv::WINDOW_NORMAL);
+     cv::namedWindow("timesurface_later", cv::WINDOW_NORMAL);
+     cv::namedWindow("opti", cv::WINDOW_NORMAL);
 
     // before processing 
     curr_undis_image = cv::Mat(camera.height,camera.width, CV_8U);
@@ -365,7 +365,7 @@ void System::Run()
 
     // check current eventsize or event interval 
     double time_interval = (eventBundle.last_tstamp-eventBundle.first_tstamp).toSec();
-    if(time_interval < 0.005 && eventBundle.size < 1000)
+    if(time_interval < 0.002 || eventBundle.size < 3000)
     {
         cout << "no enough interval or num: " <<time_interval << ", "<< eventBundle.size << endl;
         return; 
@@ -399,11 +399,16 @@ void System::Run()
     //     store_subpixel_template(est_angleAxis);     
     // }
     // 
-    est_angleAxis = Eigen::Vector3d(0,0,0); // set to 0. 
-    // est_angleAxis = Eigen::Vector3d(-1.8330431 ,-1.7431492,  1.6033788); // set to gt. 
+    // est_angleAxis = Eigen::Vector3d(0,0,0); // set to 0. 
+    // est_angleAxis = Eigen::Vector3d(1.576866857643363, 1.7536166842524228, -1.677515728118435); // set to gt. 
     
-    EstimateMotion_ransca_doublewarp_ceres(0.2, 1);
+    ros::Time t1 = ros::Time::now();
+    EstimateMotion_ransca_doublewarp_ceres(0, 1);  // TODO, start from 0.2 may be wrong ??
     // EstimateMotion_ransca_samples_ceres(0.2, 1);
+    ros::Time t2 = ros::Time::now();
+    cout << "   iter tiem " << (t2-t1).toSec() << endl;  // 0.00691187 s
+
+
 
 
     // save gt date 
@@ -567,7 +572,7 @@ void System::visualize()
         // cv::imshow("curr_map_image", curr_map_image);
         // cv::imshow("hot_image_C3", hot_image_C3);
 
-        cv::waitKey(10);
+        cv::waitKey(1);
 }
 
 

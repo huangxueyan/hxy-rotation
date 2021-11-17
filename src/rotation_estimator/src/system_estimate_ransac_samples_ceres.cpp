@@ -98,7 +98,7 @@ struct ResidualDistanceCostFunction
             // make sure got target value, search all 9 neighbors 
             {
                 // outside target, search 8 neighbors  
-                T early_dis_x = T(2), early_dis_y = T(2), later_dis_x = T(2), later_dis_y = T(2);
+                T early_dis_x = T(10), early_dis_y = T(10), later_dis_x = T(10), later_dis_y = T(10);
                 for(int i=-2; i<3; i++)
                 for(int j=-2; j<3; j++)
                 {
@@ -194,25 +194,28 @@ void System::EstimateMotion_ransca_samples_ceres(double sample_start, double sam
         // sample events 
         std::vector<int> vec_sampled_idx; 
         // int samples_count = std::min(20000, int(event_undis_Bundle.size * (sample_end-sample_start)));
-        int samples_count = 25000;
+        int samples_count = 20000;
         getSampledVec(vec_sampled_idx, samples_count, sample_start, sample_end);
 
         // get timesurface earlier 
         Eigen::Vector3d eg_angleAxis(angleAxis[0],angleAxis[1],angleAxis[2]);
         // cout << "before angleaxis " << eg_angleAxis.transpose() << endl;
          
-        double timesurface_range = (iter_/250.0) + 0.2; 
+        double timesurface_range = 0.3; 
         // double timesurface_range = 0.2;
 
         cv::Mat cv_earlier_mat = cv::Mat(180,240, CV_32FC2); // store earliest events (x, y) 
         cv::Mat cv_later_mat = cv::Mat(180,240, CV_32FC2); 
-        cv_earlier_mat = cv::Vec2f(0,0);
+        cv_earlier_mat = cv::Vec2f(0,0); // init very important 
         cv_later_mat = cv::Vec2f(0,0);
 
         // get t0 time surface of warpped image using latest angleAxis
-        cv::Mat temp_img ;
-        getWarpedEventImage(eg_angleAxis, event_warpped_Bundle).convertTo(temp_img, CV_32FC3);  // DO NOT DELETE
-        cv::imshow("opt_warp", temp_img);
+        getWarpedEventImage(eg_angleAxis, event_warpped_Bundle);
+
+        // DELETE later 
+        cv::Mat temp_img;
+        getWarpedEventImage(eg_angleAxis, event_warpped_Bundle).convertTo(temp_img, CV_32FC3);
+        cv::imshow("opti", temp_img);
         cv::waitKey(500);
 
         // get early timesurface
@@ -284,24 +287,25 @@ void System::EstimateMotion_ransca_samples_ceres(double sample_start, double sam
         problem.SetParameterUpperBound(&angleAxis[0],1, 20);
         problem.SetParameterUpperBound(&angleAxis[0],2, 20);
 
+        {
+            double cost = 0;
+            vector<double> residual_vec; 
+            problem.Evaluate(ceres::Problem::EvaluateOptions(), &cost, &residual_vec, nullptr, nullptr);
+            cout << "using " << angleAxis[0] << "," << angleAxis[1] << "," << angleAxis[2] 
+            << ", residual size " << residual_vec.size() << ", sum " << std::accumulate(residual_vec.begin(), residual_vec.end(), 0) << endl; 
+        }
+
         ceres::Solver::Summary summary; 
         ceres::Solve(options, &problem, &summary);
         // cout << summary.BriefReport() << endl;
 
         // cout << "   iter " << iter_ << ", ceres iters " << summary.iterations.size()<< endl;
-        if(summary.BriefReport().find("NO_CONVERGENCE") != std::string::npos)
-        {
-            cout << "   iter " << iter_ <<  ", No convergence Event bundle time " << eventBundle.first_tstamp.toSec() <<", size " << eventBundle.size << endl;
-            // cout << summary.BriefReport() << endl;
-        }
+        // if(summary.BriefReport().find("NO_CONVERGENCE") != std::string::npos)
+        // {
+        //     cout << "   iter " << iter_ <<  ", No convergence Event bundle time " << eventBundle.first_tstamp.toSec() <<", size " << eventBundle.size << endl;
+        //     // cout << summary.BriefReport() << endl;
+        // }
 
-        // if(iter_ == 49)
-        {
-            double cost = 0;
-            vector<double> residual_vec; 
-            problem.Evaluate(ceres::Problem::EvaluateOptions(), &cost, &residual_vec, nullptr, nullptr);
-            cout << "cost " << cost << ", residual " << residual_vec.size() << ", count " << std::accumulate(residual_vec.begin(), residual_vec.end(), 0) << endl; 
-        }
     }
 
     est_angleAxis = Eigen::Vector3d(angleAxis[0],angleAxis[1],angleAxis[2]);

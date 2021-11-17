@@ -114,7 +114,7 @@ void System::EstimateMotion_kim()
 {
     // paramters 
     cout << "time "<< eventBundle.first_tstamp.toSec() <<  ", total " << eventBundle.size << endl;
-    int max_iter_count = 300;
+    int max_iter_count = 65;
         // velocity optimize steps and smooth factor
         double mu_event = 0.05, nu_event = 1; 
         double rho_event = 0.995;

@@ -55,6 +55,7 @@ int main(int argc, char** argv)
         }
 
         sys->pushEventData(msg_ptr->events);
+        // cout << "success reveive" << endl;
         // break;
     }
         

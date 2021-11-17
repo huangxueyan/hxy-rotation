@@ -21,7 +21,9 @@ groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/poster_rotation/events.t
 # groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/shapes_rotation/events.txt"
 # groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/boxes_rotation/events.txt"
 # groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/dynamic_rotation/events.txt"
-output_dir: "/home/hxy/Desktop/hxy-rotation/data/ransac_double_warp_10000_timerange(0.2).txt"
+# output_dir: "/home/hxy/Desktop/hxy-rotation/data/ransac_size10k_double_warp_10000_timerange(0.4)_iter15.txt"
+output_dir: "/home/hxy/Desktop/hxy-rotation/data/ransac_size30k_double_warp_10000_timerange(0.2-0.5)_iter30.txt"
+# output_dir: "/home/hxy/Desktop/hxy-rotation/data/sample_test.txt"
 
 
 # 2.7e7~3.1e7 for dynamic 
@@ -37,5 +39,5 @@ read_max_lines: 25000e4
 Event.delta_time: 0.01
 using_fixed_time: 0  # 1 means true
 
-fixed_interval: 0.003
+fixed_interval: 0.02
 Event.bundle_size: 3e4 
