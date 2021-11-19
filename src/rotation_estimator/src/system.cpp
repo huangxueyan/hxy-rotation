@@ -39,9 +39,9 @@ System::System(const string& yaml)
     // cv::namedWindow("curr_warpped_event_image_gt", cv::WINDOW_NORMAL);
     // cv::namedWindow("curr_map_image", cv::WINDOW_NORMAL);
     //  cv::namedWindow("hot_image_C3", cv::WINDOW_NORMAL);
-     cv::namedWindow("timesurface_early", cv::WINDOW_NORMAL);
-     cv::namedWindow("timesurface_later", cv::WINDOW_NORMAL);
-     cv::namedWindow("opti", cv::WINDOW_NORMAL);
+    //  cv::namedWindow("timesurface_early", cv::WINDOW_NORMAL);
+    //  cv::namedWindow("timesurface_later", cv::WINDOW_NORMAL);
+    //  cv::namedWindow("opti", cv::WINDOW_NORMAL);
 
     // before processing 
     curr_undis_image = cv::Mat(camera.height,camera.width, CV_8U);
@@ -406,8 +406,8 @@ void System::Run()
     EstimateMotion_ransca_doublewarp_ceres(0, 1);  // TODO, start from 0.2 may be wrong ??
     // EstimateMotion_ransca_samples_ceres(0.2, 1);
     ros::Time t2 = ros::Time::now();
-    cout << "   iter tiem " << (t2-t1).toSec() << endl;  // 0.00691187 s
-
+    cout << "iter time " << (t2-t1).toSec() << endl;  // 0.00691187 s
+    cout << "-----------------------" << endl;
 
 
 

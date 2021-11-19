@@ -71,13 +71,13 @@ struct ResidualCostFunction
         delta_second_points_T(1) =  ag[2]*delta_points_T(0) - ag[0]*delta_points_T(2);
         delta_second_points_T(2) = -ag[1]*delta_points_T(0) + ag[0]*delta_points_T(1);
 
-        points_early_T(0) = T(points_(0)) - delta_points_T(0)*T(delta_time_early_); // + delta_second_points_T(0)*T(0.5*delta_time_*delta_time_);
-        points_early_T(1) = T(points_(1)) - delta_points_T(1)*T(delta_time_early_); // + delta_second_points_T(1)*T(0.5*delta_time_*delta_time_);
-        points_early_T(2) = T(points_(2)) - delta_points_T(2)*T(delta_time_early_); // + delta_second_points_T(2)*T(0.5*delta_time_*delta_time_);
+        points_early_T(0) = T(points_(0)) - delta_points_T(0)*T(delta_time_early_) + delta_second_points_T(0)*T(0.5*delta_time_early_*delta_time_early_);
+        points_early_T(1) = T(points_(1)) - delta_points_T(1)*T(delta_time_early_) + delta_second_points_T(1)*T(0.5*delta_time_early_*delta_time_early_);
+        points_early_T(2) = T(points_(2)) - delta_points_T(2)*T(delta_time_early_) + delta_second_points_T(2)*T(0.5*delta_time_early_*delta_time_early_);
 
-        points_later_T(0) = T(points_(0)) - delta_points_T(0)*T(delta_time_later_); // + delta_second_points_T(0)*T(0.5*delta_time_*delta_time_);
-        points_later_T(1) = T(points_(1)) - delta_points_T(1)*T(delta_time_later_); // + delta_second_points_T(1)*T(0.5*delta_time_*delta_time_);
-        points_later_T(2) = T(points_(2)) - delta_points_T(2)*T(delta_time_later_); // + delta_second_points_T(2)*T(0.5*delta_time_*delta_time_);
+        points_later_T(0) = T(points_(0)) - delta_points_T(0)*T(delta_time_later_) + delta_second_points_T(0)*T(0.5*delta_time_later_*delta_time_later_);
+        points_later_T(1) = T(points_(1)) - delta_points_T(1)*T(delta_time_later_) + delta_second_points_T(1)*T(0.5*delta_time_later_*delta_time_later_);
+        points_later_T(2) = T(points_(2)) - delta_points_T(2)*T(delta_time_later_) + delta_second_points_T(2)*T(0.5*delta_time_later_*delta_time_later_);
              
         // cout << "points "<< points(0) << ", "<< points(1) << endl;
         
@@ -206,14 +206,15 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double sample_start, double 
     // est_angleAxis = Eigen::Vector3d::Zero();
     double angleAxis[3] = {est_angleAxis(0), est_angleAxis(1), est_angleAxis(2)}; 
     
-    for(int iter_= 0; iter_< 30; iter_++)
+    for(int iter_= 1; iter_<= 30; iter_++)
     {
         // get timesurface earlier 
         Eigen::Vector3d eg_angleAxis(angleAxis[0],angleAxis[1],angleAxis[2]);
         // cout << "before angleaxis " << eg_angleAxis.transpose() << endl;
          
-        // double timesurface_range = iter_/100.0 + 0.2;  // original 
-        double timesurface_range = iter_/100.0 + 0.2 ; // TODO 
+        // double timesurface_range = iter_/50.0 + 0.2;  // original 
+        // double timesurface_range = (15-iter_)/45.0 + 0.2 ; // TODO 
+        double timesurface_range = 0.4;  
         cv::Mat cv_earlier_timesurface = cv::Mat(180,240, CV_32FC1); 
         cv::Mat cv_later_timesurface = cv::Mat(180,240, CV_32FC1); 
 
@@ -297,14 +298,19 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double sample_start, double 
             // }
 
         // TODO add gaussian on cv_earlier_timesurface
+        cv::Mat cv_earlier_timesurface_blur, cv_later_timesurface_blur;
+        cv::GaussianBlur(cv_earlier_timesurface, cv_earlier_timesurface_blur, cv::Size(5, 5), 1);
+        cv::GaussianBlur(cv_later_timesurface, cv_later_timesurface_blur, cv::Size(5, 5), 1);
 
 
 
         // get timesurface in ceres 
         t1 = ros::Time::now();
 
-        vector<float> line_grid_early; line_grid_early.assign((float*)cv_earlier_timesurface.data, (float*)cv_earlier_timesurface.data + 180*240);
-        vector<float> line_grid_later; line_grid_later.assign((float*)cv_later_timesurface.data, (float*)cv_later_timesurface.data + 180*240);
+        // vector<float> line_grid_early; line_grid_early.assign((float*)cv_earlier_timesurface.data, (float*)cv_earlier_timesurface.data + 180*240);
+        // vector<float> line_grid_later; line_grid_later.assign((float*)cv_later_timesurface.data, (float*)cv_later_timesurface.data + 180*240);
+        vector<float> line_grid_early; line_grid_early.assign((float*)cv_earlier_timesurface_blur.data, (float*)cv_earlier_timesurface_blur.data + 180*240);
+        vector<float> line_grid_later; line_grid_later.assign((float*)cv_later_timesurface_blur.data, (float*)cv_later_timesurface_blur.data + 180*240);
 
         t2 = ros::Time::now();
         if(show_time_info)
@@ -320,7 +326,7 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double sample_start, double 
         // accumulate all time difference before and after warpped points. 
         std::vector<int> vec_sampled_idx; 
         // int samples_count = std::min(2000,int(event_undis_Bundle.size * (sample_end-sample_start)));
-        int samples_count = std::min(10000, int(eventBundle.size)); 
+        int samples_count = std::min(8000, int(eventBundle.size)); 
         
         t1 = ros::Time::now();
         getSampledVec(vec_sampled_idx, samples_count, sample_start, sample_end);
@@ -359,7 +365,7 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double sample_start, double 
         // options.logging_type = ceres::SILENT;
         options.linear_solver_type = ceres::SPARSE_SCHUR;
         options.use_nonmonotonic_steps = true;
-        options.max_num_iterations = 10;
+        options.max_num_iterations = 20;
         // options.initial_trust_region_radius = 1;
         problem.SetParameterLowerBound(&angleAxis[0],0,-20);
         problem.SetParameterLowerBound(&angleAxis[0],1,-20);
@@ -372,7 +378,7 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double sample_start, double 
 
         // evaluate: choose init velocity, test whether using last_est or {0,0,0},
         // TODO, this method may be wrong ?? 
-        if(iter_ == 0)
+        if(iter_ == 1)
         {
             double cost = 0;
             vector<double> residual_vec; 
