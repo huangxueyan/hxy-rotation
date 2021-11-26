@@ -162,10 +162,11 @@ void System::getSampledVec(vector<int>& vec_sampled_idx, int samples_count, doub
                 count += (  curr_undis_event_image.at<cv::Vec3f>(sampled_y+j,sampled_x+k)[0] + 
                             curr_undis_event_image.at<cv::Vec3f>(sampled_y+j,sampled_x+k)[1] +
                             curr_undis_event_image.at<cv::Vec3f>(sampled_y+j,sampled_x+k)[2] ) > 0;
+                // count += (  curr_undis_event_image.at<float>(sampled_y+j,sampled_x+k) != default_value)
             }
 
-        // valid 
-        if(count > 4)
+        // valid denoised
+        if(count > yaml_denoise_num)  // TODO 
         {
             vec_sampled_idx.push_back(sample_idx);
             i++;

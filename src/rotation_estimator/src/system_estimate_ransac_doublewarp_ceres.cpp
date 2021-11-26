@@ -191,11 +191,14 @@ struct ResidualCostFunction
 
 /**
 * \brief using time as distance, self boosting, using ceres as optimizer, const gradient for each optimizing.
+  \param [ts_start, ts_end]: time_range to form timesurface template  
+  \param sample_num: the sample count beyond the time_range  
 */
-void System::EstimateMotion_ransca_doublewarp_ceres(double sample_start, double sample_end)
+void System::EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_end, int sample_num, int total_iter_num)
 {
-    cout << "time "<< eventBundle.first_tstamp.toSec() <<  ", total " << 
-            eventBundle.size << ", duration " << (eventBundle.last_tstamp - eventBundle.first_tstamp).toSec()  << ", sample ratio " << sample_start<<"~"<< sample_end <<endl;
+    cout <<seq_count<< " time "<< eventBundle.first_tstamp.toSec() <<  ", total "
+            << eventBundle.size << ", duration " << (eventBundle.last_tstamp - eventBundle.first_tstamp).toSec() 
+            << ", sample " << sample_num << ", ts_start " << ts_start<<"~"<< ts_end << ", iter " << total_iter_num <<endl;
 
     bool show_time_info = false;
     // measure time 
@@ -206,31 +209,31 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double sample_start, double 
     // est_angleAxis = Eigen::Vector3d::Zero();
     double angleAxis[3] = {est_angleAxis(0), est_angleAxis(1), est_angleAxis(2)}; 
     
-    for(int iter_= 1; iter_<= 30; iter_++)
+    for(int iter_= 1; iter_<= total_iter_num; iter_++)
     {
         // get timesurface earlier 
         Eigen::Vector3d eg_angleAxis(angleAxis[0],angleAxis[1],angleAxis[2]);
         // cout << "before angleaxis " << eg_angleAxis.transpose() << endl;
          
         // double timesurface_range = iter_/50.0 + 0.2;  // original 
-        // double timesurface_range = (15-iter_)/45.0 + 0.2 ; // TODO 
-        double timesurface_range = 0.4;  
+        // double timesurface_range = (iter_)/60.0 + 0.2;
+        double timesurface_range = ts_start + iter_/float(total_iter_num) * (ts_end-ts_start);  
         cv::Mat cv_earlier_timesurface = cv::Mat(180,240, CV_32FC1); 
         cv::Mat cv_later_timesurface = cv::Mat(180,240, CV_32FC1); 
 
 
         // cv::Mat visited_map = cv::Mat(180,240, CV_8U); visited_map.setTo(0);
-        float default_value = eventBundle.time_delta(int(eventBundle.size*timesurface_range));
-        cv_earlier_timesurface.setTo(default_value);
+        float early_default_value = eventBundle.time_delta(int(eventBundle.size*timesurface_range));
+        cv_earlier_timesurface.setTo(early_default_value * yaml_default_value_factor);
         // cout << "default early " << default_value << endl; 
-        default_value = eventBundle.time_delta(eventBundle.size-1) - eventBundle.time_delta(int(eventBundle.size*(1-timesurface_range)));
-        cv_later_timesurface.setTo(default_value);
+        float later_default_value = eventBundle.time_delta(eventBundle.size-1) - eventBundle.time_delta(int(eventBundle.size*(1-timesurface_range)));
+        cv_later_timesurface.setTo(later_default_value * yaml_default_value_factor);
         // cout << "default later " << default_value << endl; 
 
         // get t0 time surface of warpped image using latest angleAxis
         
         t1 = ros::Time::now();
-        getWarpedEventImage(eg_angleAxis, event_warpped_Bundle); 
+        getWarpedEventImage(eg_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);  // get latest warpped events 
         t2 = ros::Time::now();
         if(show_time_info)
             cout << "getWarpedEventImage time " << (t2-t1).toSec() * 2 << endl;  // 0.00691187 s
@@ -248,8 +251,8 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double sample_start, double 
         // }
 
 
+    t1 = ros::Time::now();
         // get early timesurface
-        t1 = ros::Time::now();
         for(int i= event_warpped_Bundle.size*timesurface_range; i >=0; i--)
         {
             
@@ -259,10 +262,9 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double sample_start, double 
             // linear add TODO improve to module 
                 cv_earlier_timesurface.at<float>(sampled_y, sampled_x) = eventBundle.time_delta(i);  
         } 
-
-        t2 = ros::Time::now();
-        if(show_time_info)
-            cout << "cv_earlier_timesurface time " << (t2-t1).toSec() * 2 << endl; // 0.000106088
+    t2 = ros::Time::now();
+    if(show_time_info)
+        cout << "cv_earlier_timesurface time " << (t2-t1).toSec() * 2 << endl; // 0.000106088
 
         // get t1 time surface of warpped image
         getWarpedEventImage(eg_angleAxis, event_warpped_Bundle, PlotOption::U16C1_EVNET_IMAGE, true);
@@ -297,24 +299,22 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double sample_start, double 
             //     cv::waitKey(0);
             // }
 
-        // TODO add gaussian on cv_earlier_timesurface
+        // add gaussian on cv_earlier_timesurface
         cv::Mat cv_earlier_timesurface_blur, cv_later_timesurface_blur;
-        cv::GaussianBlur(cv_earlier_timesurface, cv_earlier_timesurface_blur, cv::Size(5, 5), 1);
-        cv::GaussianBlur(cv_later_timesurface, cv_later_timesurface_blur, cv::Size(5, 5), 1);
-
-
+        int gaussian_size = yaml_gaussian_size;
+        float sigma = yaml_gaussian_size_sigma;
+        cv::GaussianBlur(cv_earlier_timesurface, cv_earlier_timesurface_blur, cv::Size(gaussian_size, gaussian_size), sigma);
+        cv::GaussianBlur(cv_later_timesurface, cv_later_timesurface_blur, cv::Size(gaussian_size, gaussian_size), sigma);
 
         // get timesurface in ceres 
-        t1 = ros::Time::now();
-
+    t1 = ros::Time::now();
         // vector<float> line_grid_early; line_grid_early.assign((float*)cv_earlier_timesurface.data, (float*)cv_earlier_timesurface.data + 180*240);
         // vector<float> line_grid_later; line_grid_later.assign((float*)cv_later_timesurface.data, (float*)cv_later_timesurface.data + 180*240);
         vector<float> line_grid_early; line_grid_early.assign((float*)cv_earlier_timesurface_blur.data, (float*)cv_earlier_timesurface_blur.data + 180*240);
         vector<float> line_grid_later; line_grid_later.assign((float*)cv_later_timesurface_blur.data, (float*)cv_later_timesurface_blur.data + 180*240);
-
-        t2 = ros::Time::now();
-        if(show_time_info)
-            cout << "convert inter time " << (t2-t1).toSec() << endl; // 0.000256303, using pointer reduce to 2.6943e-05
+    t2 = ros::Time::now();
+    if(show_time_info)
+        cout << "convert inter time " << (t2-t1).toSec() << endl; // 0.000256303, using pointer reduce to 2.6943e-05
 
         ceres::Grid2D<float,1> grid_early(line_grid_early.data(), 0, 180, 0, 240);
         ceres::Grid2D<float,1> grid_later(line_grid_later.data(), 0, 180, 0, 240);
@@ -324,21 +324,18 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double sample_start, double 
         // sample events 
         // select 100 random points, and warp delta_t < min(t_point_delta_t). 
         // accumulate all time difference before and after warpped points. 
+    t1 = ros::Time::now();
         std::vector<int> vec_sampled_idx; 
-        // int samples_count = std::min(2000,int(event_undis_Bundle.size * (sample_end-sample_start)));
-        int samples_count = std::min(8000, int(eventBundle.size)); 
-        
-        t1 = ros::Time::now();
-        getSampledVec(vec_sampled_idx, samples_count, sample_start, sample_end);
-        t2 = ros::Time::now();
-        if(show_time_info)
-            cout << "getSampledVec time " << (t2-t1).toSec() << endl; // 0.000473817
+        int samples_count = std::min(sample_num, int(eventBundle.size)); 
+        getSampledVec(vec_sampled_idx, samples_count, 0, 1);
+    t2 = ros::Time::now();
+    if(show_time_info)
+        cout << "getSampledVec time " << (t2-t1).toSec() << endl; // 0.000473817
 
+    t1 = ros::Time::now();  
         // init problem 
         ceres::Problem problem; 
         // add residual 
-        t1 = ros::Time::now();
-
         for(int loop_temp =0; loop_temp < vec_sampled_idx.size(); loop_temp++)
         {
             size_t sample_idx = vec_sampled_idx[loop_temp];
@@ -354,18 +351,17 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double sample_start, double 
 
             problem.AddResidualBlock(cost_function, nullptr, &angleAxis[0]);
         }
-    
-        t2 = ros::Time::now();
-        if(show_time_info)
-            cout << "add residual time " << (t2-t1).toSec() << endl;  // 0.00168042
+    t2 = ros::Time::now();
+    if(show_time_info)
+        cout << "add residual time " << (t2-t1).toSec() << endl;  // 0.00168042
 
         ceres::Solver::Options options;
         options.minimizer_progress_to_stdout = false;
-        options.num_threads = 6;
+        options.num_threads = 2;
         // options.logging_type = ceres::SILENT;
         options.linear_solver_type = ceres::SPARSE_SCHUR;
         options.use_nonmonotonic_steps = true;
-        options.max_num_iterations = 20;
+        options.max_num_iterations = yaml_ceres_iter_num;
         // options.initial_trust_region_radius = 1;
         problem.SetParameterLowerBound(&angleAxis[0],0,-20);
         problem.SetParameterLowerBound(&angleAxis[0],1,-20);
@@ -377,7 +373,6 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double sample_start, double 
         ceres::Solver::Summary summary; 
 
         // evaluate: choose init velocity, test whether using last_est or {0,0,0},
-        // TODO, this method may be wrong ?? 
         if(iter_ == 1)
         {
             double cost = 0;

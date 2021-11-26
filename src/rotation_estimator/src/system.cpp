@@ -8,11 +8,22 @@ System::System(const string& yaml)
 {
     cout << "init system" << endl;
 
-    cv::FileStorage fSetting(yaml, cv::FileStorage::READ);
-    if(!fSetting.isOpened())
+    cv::FileStorage fSettings(yaml, cv::FileStorage::READ);
+    if(!fSettings.isOpened())
     {
         ROS_ERROR("counld not open file %s", yaml.c_str());
     }
+
+    yaml_iter_num = fSettings["yaml_iter_num"];
+    yaml_ts_start = fSettings["yaml_ts_start"];
+    yaml_ts_end = fSettings["yaml_ts_end"];
+    yaml_sample_count = fSettings["yaml_sample_count"];
+    yaml_ceres_iter_num = fSettings["yaml_ceres_iter_num"];
+    yaml_gaussian_size = fSettings["yaml_gaussian_size"];
+    yaml_gaussian_size_sigma = fSettings["yaml_gaussian_size_sigma"];
+    yaml_denoise_num = fSettings["yaml_denoise_num"];
+    yaml_default_value_factor = fSettings["yaml_default_value_factor"];
+
 
     // undistore data 
     undist_mesh_x, undist_mesh_y;  
@@ -63,7 +74,14 @@ System::System(const string& yaml)
     curr_warpped_event_image_gt = cv::Mat(camera.height,camera.width, CV_32F); 
 
     // output file 
-    string output_dir = fSetting["output_dir"];
+    string output_dir = fSettings["output_dir"];
+    output_dir += std::to_string(yaml_sample_count) + 
+        "_timerange(0." + std::to_string(int(yaml_ts_start*10)) +"-0." +std::to_string(int(yaml_ts_end*10)) + ")"+
+        "_iter"+ std::to_string(yaml_iter_num) + "_ceres" + std::to_string(yaml_ceres_iter_num)+
+        "_gaussan" +std::to_string(yaml_gaussian_size) +"_sigma"+std::to_string(int(yaml_gaussian_size_sigma)) +"." +std::to_string(int(yaml_gaussian_size_sigma*10)%10)+
+        "_denoise" + std::to_string(yaml_denoise_num) + 
+        "_defaultval" +std::to_string(int(yaml_default_value_factor)) +"." +std::to_string(int(yaml_default_value_factor*10)%10)+ ".txt";
+    cout << "open file " << output_dir << endl; 
     est_velocity_file = fstream(output_dir, ios::out);
     // est_velocity_file_quat = fstream("/home/hxy/Desktop/hxy-rotation/data/evo_data/ransac_velocity.txt", ios::out);
 
@@ -403,7 +421,8 @@ void System::Run()
     // est_angleAxis = Eigen::Vector3d(1.576866857643363, 1.7536166842524228, -1.677515728118435); // set to gt. 
     
     ros::Time t1 = ros::Time::now();
-    EstimateMotion_ransca_doublewarp_ceres(0, 1);  // TODO, start from 0.2 may be wrong ??
+
+    EstimateMotion_ransca_doublewarp_ceres(yaml_ts_start, yaml_ts_end, yaml_sample_count, yaml_iter_num);
     // EstimateMotion_ransca_samples_ceres(0.2, 1);
     ros::Time t2 = ros::Time::now();
     cout << "iter time " << (t2-t1).toSec() << endl;  // 0.00691187 s
@@ -418,7 +437,7 @@ void System::Run()
     // getMapImage();
 
     // visualize 
-    visualize(); 
+    // visualize(); 
 
     // clear event bundle 
     // que_vec_eventData.pop();
@@ -565,7 +584,7 @@ void System::visualize()
             // "types " << curr_undis_event_image.type() << endl;
         cv::imshow("curr_undis_event_image", curr_undis_event_image);
 
-        getWarpedEventImage(est_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);
+        // getWarpedEventImage(est_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);
         cv::imshow("curr_warpped_event_image", curr_warpped_event_image);
         // cv::imshow("curr_warpped_event_image_gt", curr_warpped_event_image_gt);
 

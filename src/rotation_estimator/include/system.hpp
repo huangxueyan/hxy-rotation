@@ -76,7 +76,7 @@ public:
 
     void EstimateMotion_kim();  
     void EstimateMotion_CM_ceres();
-    void EstimateMotion_ransca_doublewarp_ceres(double sample_start, double sample_end);
+    void EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_end, int sample_num, int total_iter_num);
     void EstimateMotion_ransca_samples_ceres(double sample_start, double sample_end);
     void EstimateMotion_KS_ceres();
     // void EstimateMotion_ransca_once(double sample_ratio, double warp_time_ratio, double opti_steps);
@@ -113,8 +113,15 @@ private:
 
 // configration 
     string yaml;  
-
-
+    int   yaml_iter_num;
+    float yaml_ts_start;
+    float yaml_ts_end;
+    int   yaml_sample_count;
+    int yaml_ceres_iter_num;
+    int yaml_gaussian_size;
+    float yaml_gaussian_size_sigma;
+    int yaml_denoise_num;
+    float yaml_default_value_factor; 
 // motion 
     vector<double> vec_curr_time;
     vector<Eigen::Vector3d> vec_angular_velocity;
