@@ -52,7 +52,7 @@ struct ResidualCostFunction
 
     // operator 
     template<typename T> 
-    bool operator()(const T* ag, T* residual) const
+    bool operator()(const T* const ag, T* residual) const
     {
         
         int count = 0; 
@@ -339,8 +339,8 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_e
         for(int loop_temp =0; loop_temp < vec_sampled_idx.size(); loop_temp++)
         {
             size_t sample_idx = vec_sampled_idx[loop_temp];
-            double early_time =  eventBundle.time_delta(sample_idx);
-            double later_time =  eventBundle.time_delta(sample_idx) - eventBundle.time_delta(event_warpped_Bundle.size-1);
+            double early_time =  eventBundle.time_delta(sample_idx); // positive 
+            double later_time =  eventBundle.time_delta(sample_idx) - eventBundle.time_delta(event_warpped_Bundle.size-1); // negative
 
             ceres::CostFunction* cost_function = ResidualCostFunction::Create(
                                                     event_undis_Bundle.coord_3d.col(sample_idx),

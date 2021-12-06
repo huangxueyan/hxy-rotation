@@ -82,8 +82,8 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
     }
     else
     {   
-        Eigen::VectorXd vec_delta_time = eventBundle.time_delta;  
-        if(ref_t1) vec_delta_time = eventBundle.time_delta.array() - eventBundle.time_delta(eventBundle.size-1);  
+        Eigen::VectorXd vec_delta_time = eventBundle.time_delta;  // positive 
+        if(ref_t1) vec_delta_time = eventBundle.time_delta.array() - eventBundle.time_delta(eventBundle.size-1);   // negative 
 
         if(delta_time > 0)  // using self defined deltime. 
         {

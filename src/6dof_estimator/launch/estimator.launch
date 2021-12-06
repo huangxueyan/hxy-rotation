@@ -1,0 +1,10 @@
+<launch>
+  <node name="6dof_estimator" pkg="6dof_estimator" type="6dof_estimator_node" output="screen">
+  
+    <!-- <param name="filename" type="string" value="$(find event_publisher)/config/config.yaml" /> -->
+    <param name="yaml" type="string" value="$(find 6dof_estimator)/config/config.yaml" />
+    <param name="reader_yaml" type="string" value="$(find event_publisher)/config/config.yaml" />
+
+  </node>
+
+</launch>

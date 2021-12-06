@@ -17,13 +17,13 @@ height: 180
 #--------------------------------------------------------------------------------------------
 # Input Parameters
 #--------------------------------------------------------------------------------------------
-# groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/poster_rotation/events.txt"
-groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/dynamic_rotation/events.txt"
+groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/poster_rotation/events.txt"
+# groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/dynamic_rotation/events.txt"
 # groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/boxes_rotation/events.txt"
 # output_dir: "/home/hxy/Desktop/hxy-rotation/data/ransac_size10k_double_warp_10000_timerange(0.4)_iter15.txt"
 # output_dir: "/home/hxy/Desktop/hxy-rotation/data/dynamic_ransac_size30k_double_warp_10000_timerange(0.2-0.8)_iter30_ceres10_gaussian55_sigma0.1_denoise4_defaultval1.txt"
 # output_dir: "/home/hxy/Desktop/hxy-rotation/data/seg_ransac_size30k_double_warp_20000_timerange(0.8-0.8)_iter30_ceres20_gaussian55_sigma1_denoise6.txt"
-output_dir: "/home/hxy/Desktop/hxy-rotation/data/dynamic_ransac_size30k_double_warp_"
+output_dir: "/home/hxy/Desktop/hxy-rotation/data/poster_ransac_size30k_double_warp_"
 # output_dir: "/home/hxy/Desktop/hxy-rotation/data/ransac_size30k_double_warp_"
 
 yaml_sample_count: 4000
@@ -31,7 +31,7 @@ yaml_iter_num: 30
 yaml_ceres_iter_num: 10
 yaml_ts_start: 0.2
 yaml_ts_end: 0.2
-yaml_denoise_num: 4
+yaml_denoise_num: 6
 yaml_gaussian_size: 5
 yaml_gaussian_size_sigma: 1
 yaml_default_value_factor: 1

@@ -1,0 +1,10 @@
+<launch>
+  <node name="planar_estimator" pkg="planar_estimator" type="planar_estimator_node" output="screen">
+  
+    <!-- <param name="filename" type="string" value="$(find event_publisher)/config/config.yaml" /> -->
+    <param name="yaml" type="string" value="$(find planar_estimator)/config/config.yaml" />
+    <param name="reader_yaml" type="string" value="$(find event_publisher)/config/config.yaml" />
+
+  </node>
+
+</launch>
