@@ -221,7 +221,7 @@ void EventBundle::InverseProjection(Eigen::Matrix3d& K)
     coord_3d.row(2) = Eigen::MatrixXd::Ones(1, size);
     
     // cout << coord_3d.topLeftCorner(3,5) << endl;
-    coord_3d.colwise().normalize();
+    // coord_3d.colwise().normalize();
 
     // cout << coord_3d.topLeftCorner(3,5) << endl;
     

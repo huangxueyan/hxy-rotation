@@ -57,23 +57,7 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
     // cout << "projecting " << endl;
     // the theta of rotation axis
     float ang_vel_norm = cur_ang_vel.norm(); 
-
-    Eigen::Matrix3Xd ang_vel_hat_mul_x, ang_vel_hat_sqr_mul_x;
     
-    
-    /** equation 11 of kim */ 
-    // ang_vel_hat_mul_x.resize(3,eventIn.size);     // row, col 
-    // ang_vel_hat_sqr_mul_x.resize(3,eventIn.size); 
-    // ang_vel_hat_mul_x.row(0) = -cur_ang_vel(2)*eventIn.coord_3d.row(1) + cur_ang_vel(1)*eventIn.coord_3d.row(2);
-    // ang_vel_hat_mul_x.row(1) =  cur_ang_vel(2)*eventIn.coord_3d.row(0) - cur_ang_vel(0)*eventIn.coord_3d.row(2);
-    // ang_vel_hat_mul_x.row(2) = -cur_ang_vel(1)*eventIn.coord_3d.row(0) + cur_ang_vel(0)*eventIn.coord_3d.row(1);
-
-
-    // ang_vel_hat_sqr_mul_x.row(0) = -cur_ang_vel(2)*ang_vel_hat_mul_x.row(1) + cur_ang_vel(1)*ang_vel_hat_mul_x.row(2);
-    // ang_vel_hat_sqr_mul_x.row(1) =  cur_ang_vel(2)*ang_vel_hat_mul_x.row(0) - cur_ang_vel(0)*ang_vel_hat_mul_x.row(2);
-    // ang_vel_hat_sqr_mul_x.row(2) = -cur_ang_vel(1)*ang_vel_hat_mul_x.row(0) + cur_ang_vel(0)*ang_vel_hat_mul_x.row(1);
-
-
     eventOut.CopySize(eventIn);
     if(ang_vel_norm < 1e-8) 
     {
@@ -90,12 +74,28 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
             vec_delta_time.setConstant(delta_time);
             // cout <<"using const delta " << delta_time << endl;
         }
-                
+
+        // first order version          
+        Eigen::Matrix3Xd ang_vel_hat_mul_x, ang_vel_hat_sqr_mul_x;  /** equation 11 of kim */ 
+        ang_vel_hat_mul_x.resize(3,eventIn.size);     // row, col 
+        ang_vel_hat_sqr_mul_x.resize(3,eventIn.size); 
+        ang_vel_hat_mul_x.row(0) = -cur_ang_vel(2)*eventIn.coord_3d.row(1) + cur_ang_vel(1)*eventIn.coord_3d.row(2);
+        ang_vel_hat_mul_x.row(1) =  cur_ang_vel(2)*eventIn.coord_3d.row(0) - cur_ang_vel(0)*eventIn.coord_3d.row(2);
+        ang_vel_hat_mul_x.row(2) = -cur_ang_vel(1)*eventIn.coord_3d.row(0) + cur_ang_vel(0)*eventIn.coord_3d.row(1);
+
+        ang_vel_hat_sqr_mul_x.row(0) = -cur_ang_vel(2)*ang_vel_hat_mul_x.row(1) + cur_ang_vel(1)*ang_vel_hat_mul_x.row(2);
+        ang_vel_hat_sqr_mul_x.row(1) =  cur_ang_vel(2)*ang_vel_hat_mul_x.row(0) - cur_ang_vel(0)*ang_vel_hat_mul_x.row(2);
+        ang_vel_hat_sqr_mul_x.row(2) = -cur_ang_vel(1)*ang_vel_hat_mul_x.row(0) + cur_ang_vel(0)*ang_vel_hat_mul_x.row(1);
+
+        eventOut.coord_3d = eventIn.coord_3d
+                                    + Eigen::MatrixXd( 
+                                        ang_vel_hat_mul_x.array().rowwise() 
+                                        * (-vec_delta_time.transpose().array()));
         // kim second order version;
         // eventOut.coord_3d = eventIn.coord_3d
         //                             + Eigen::MatrixXd( 
         //                                 ang_vel_hat_mul_x.array().rowwise() 
-        //                                 * (-vec_delta_time.transpose().array()));
+        //                                 * (-vec_delta_time.transpose().array())
         //                                 + ang_vel_hat_sqr_mul_x.array().rowwise() 
         //                                 * (0.5f * vec_delta_time.transpose().array().square()) );
         // cout << "usingg est" << cur_ang_vel.transpose() << endl;
@@ -105,21 +105,19 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
         // cout << "final \n" << eventOut.coord_3d.topLeftCorner(3,5) <<  endl;
  
         // rodrigues version wiki
-        Eigen::Matrix<double,3,1> axis = cur_ang_vel.normalized();
-        Eigen::VectorXd angle_vec = -vec_delta_time * ang_vel_norm ;
+        // Eigen::Matrix<double,3,1> axis = cur_ang_vel.normalized();
+        // Eigen::VectorXd angle_vec = -vec_delta_time * ang_vel_norm ;
 
-        Eigen::VectorXd cos_angle_vec = angle_vec.array().cos();
-        Eigen::VectorXd sin_angle_vec = angle_vec.array().sin();
+        // Eigen::VectorXd cos_angle_vec = angle_vec.array().cos();
+        // Eigen::VectorXd sin_angle_vec = angle_vec.array().sin();
 
-        Eigen::Matrix3Xd first = eventIn.coord_3d.array().rowwise() * cos_angle_vec.transpose().array(); 
+        // Eigen::Matrix3Xd first = eventIn.coord_3d.array().rowwise() * cos_angle_vec.transpose().array(); 
+        // Eigen::Matrix3Xd second = (-eventIn.coord_3d.array().colwise().cross(axis)).array().rowwise() * sin_angle_vec.transpose().array();
+        // Eigen::VectorXd third1 = axis.transpose() * eventIn.coord_3d;
+        // Eigen::VectorXd third2 = third1.array() * (1-cos_angle_vec.array()).array();;
+        // Eigen::Matrix3Xd third = axis * third2.transpose();
 
-        Eigen::Matrix3Xd second = (-eventIn.coord_3d.array().colwise().cross(axis)).array().rowwise() * sin_angle_vec.transpose().array();
-
-        Eigen::VectorXd third1 = axis.transpose() * eventIn.coord_3d;
-        Eigen::VectorXd third2 = third1.array() * (1-cos_angle_vec.array()).array();;
-        Eigen::Matrix3Xd third = axis * third2.transpose();
-    
-        eventOut.coord_3d = first + second + third; 
+        // eventOut.coord_3d = first + second + third; 
         // cout << "last \n " << eventOut.coord_3d.bottomRightCorner(3,5) <<  endl;
 
     }

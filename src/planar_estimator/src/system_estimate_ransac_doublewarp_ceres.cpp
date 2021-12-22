@@ -23,10 +23,12 @@ struct ResidualCostFunction
         const Eigen::Matrix3d& K, 
         ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>* interpolator_early_ptr,
         ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>* interpolator_later_ptr,
-        cv::Mat& cv_earlier_timesurface, cv::Mat& cv_later_timesurface):
+        cv::Mat& cv_earlier_timesurface, cv::Mat& cv_later_timesurface,
+        Eigen::Vector2d& last_est_N_norm, double yaml_regulization_factor):
             points_(points), delta_time_early_(delta_time_early), delta_time_later_(delta_time_later), 
             intrisic_(K), interpolator_early_ptr_(interpolator_early_ptr), interpolator_later_ptr_(interpolator_later_ptr),
-            cv_earlier_timesurface_(cv_earlier_timesurface), cv_later_timesurface_(cv_later_timesurface)
+            cv_earlier_timesurface_(cv_earlier_timesurface), cv_later_timesurface_(cv_later_timesurface),
+            last_N_norm_(last_est_N_norm), yaml_regulization_factor_(yaml_regulization_factor)
     {
 
     }
@@ -41,32 +43,40 @@ struct ResidualCostFunction
         points_T(1) = T(points_(1));
         points_T(2) = T(points_(2));
         
+        // WARNING TODO 由于 N和T不是简单取负值, 所以double warp的策略不成立
         Eigen::Matrix<T, 3, 1> delta_points_T, delta_second_points_T;
         Eigen::Matrix<T, 3, 1> points_early_T, points_later_T;
         Eigen::Matrix<T, 2, 1> points_2D_early_T, points_2D_later_T;
 
         // rotation part 
-        T ag[3] = {ag_v_ang[0], ag_v_ang[1], ag_v_ang[2]};
-        { 
-            // taylor first 
-            delta_points_T(0) = -ag[2]*points_T(1) + ag[1]*points_T(2);
-            delta_points_T(1) =  ag[2]*points_T(0) - ag[0]*points_T(2);
-            delta_points_T(2) = -ag[1]*points_T(0) + ag[0]*points_T(1);
+            Eigen::Matrix<T, 3, 3> Rotation_early;
+            Eigen::Matrix<T, 3, 1> ag_early = {ag_v_ang[0], ag_v_ang[1], ag_v_ang[2]};
 
-            // taylor second 
-            delta_second_points_T(0) = -ag[2]*delta_points_T(1) + ag[1]*delta_points_T(2);
-            delta_second_points_T(1) =  ag[2]*delta_points_T(0) - ag[0]*delta_points_T(2);
-            delta_second_points_T(2) = -ag[1]*delta_points_T(0) + ag[0]*delta_points_T(1);
+            // ceres rotation
+            // {
+            //     ag_early = ag_early * T(delta_time_early_);         
+            //     ceres::AngleAxisToRotationMatrix(&ag_early(0), &Rotation_early(0));
+            // }
 
-            points_early_T(0) = points_T(0) - delta_points_T(0)*T(delta_time_early_) + delta_second_points_T(0)*T(0.5*delta_time_early_*delta_time_early_);
-            points_early_T(1) = points_T(1) - delta_points_T(1)*T(delta_time_early_) + delta_second_points_T(1)*T(0.5*delta_time_early_*delta_time_early_);
-            points_early_T(2) = points_T(2) - delta_points_T(2)*T(delta_time_early_) + delta_second_points_T(2)*T(0.5*delta_time_early_*delta_time_early_);
 
-            points_later_T(0) = points_T(0) - delta_points_T(0)*T(delta_time_later_) + delta_second_points_T(0)*T(0.5*delta_time_later_*delta_time_later_);
-            points_later_T(1) = points_T(1) - delta_points_T(1)*T(delta_time_later_) + delta_second_points_T(1)*T(0.5*delta_time_later_*delta_time_later_);
-            points_later_T(2) = points_T(2) - delta_points_T(2)*T(delta_time_later_) + delta_second_points_T(2)*T(0.5*delta_time_later_*delta_time_later_);
-        }
-        // cout << "points "<< points(0) << ", "<< points(1) << endl;
+            // wiki rotation
+            {
+                // T ag_norm = ag_early.norm();
+                // // Eigen::Matrix<T,3,1> axis = ag_early.normalized();
+                // Eigen::Matrix<T,3,3> skew_m; 
+                // skew_m(0,0) = T(0.0);
+                // skew_m(0,1) = -ag_early(2)/ag_norm;
+                // skew_m(0,2) =  ag_early(1)/ag_norm;
+                // skew_m(1,0) =  ag_early(2)/ag_norm;
+                // skew_m(1,1) = T(0.0);
+                // skew_m(1,2) = -ag_early(0)/ag_norm;
+                // skew_m(2,0) = -ag_early(1)/ag_norm;
+                // skew_m(2,1) =  ag_early(0)/ag_norm;
+                // skew_m(2,2) = T(0.0);
+                // T theta = ag_norm * T(delta_time_early_);
+                // Rotation_early = Eigen::Matrix<T,3,3>::Identity() + sin(theta)*skew_m + (1.0-cos(theta))*skew_m*skew_m;
+            }
+
         
         Eigen::Matrix<T, 3, 1> vel; // translation velocity
         vel(0) = ag_v_ang[3];
@@ -75,11 +85,29 @@ struct ResidualCostFunction
         
         T alpha = ag_v_ang[6], beta = ag_v_ang[7]; // for N norm vector and control its length to 1
         Eigen::Matrix<T, 3, 1> N_norm; 
-        N_norm(0) = ceres::cos(alpha) * ceres::sin(beta);
-        N_norm(1) = ceres::sin(alpha) * ceres::sin(beta);
-        N_norm(2) = ceres::cos(beta);  
-        // translation part 
+        N_norm(0) = cos(alpha) * sin(beta);
+        N_norm(1) = sin(alpha) * sin(beta);
+        N_norm(2) = cos(beta);  
+        
+        // translation part new using matrix  
         {
+            // points_early_T = (Rotation_early - vel * N_norm.transpose() * T(delta_time_early_)) * points_T;
+            // points_later_T = (Rotation_later - T(delta_time_later_) * vel * N_norm.transpose()).inverse() * points_T;
+        }
+
+
+        // translation part old 
+        {
+            // from t2->t1, so Pt1 = Pt1 + skew*Pt1
+            delta_points_T(0) = -ag_v_ang[2]*T(points_(1)) + ag_v_ang[1]*T(points_(2));  
+            delta_points_T(1) =  ag_v_ang[2]*T(points_(0)) - ag_v_ang[0]*T(points_(2));
+            delta_points_T(2) = -ag_v_ang[1]*T(points_(0)) + ag_v_ang[0]*T(points_(1));
+
+            points_early_T(0) = T(points_(0)) + delta_points_T(0)*T(delta_time_early_) ;// + delta_second_points_T(0)*T(0.5*delta_time_early_*delta_time_early_);
+            points_early_T(1) = T(points_(1)) + delta_points_T(1)*T(delta_time_early_) ;// + delta_second_points_T(1)*T(0.5*delta_time_early_*delta_time_early_);
+            points_early_T(2) = T(points_(2)) + delta_points_T(2)*T(delta_time_early_) ;// + delta_second_points_T(2)*T(0.5*delta_time_early_*delta_time_early_);
+
+            // the homography is not simply set negative time, but using mattrix inverse !!!  
             points_early_T(0) -= T(delta_time_early_) * vel(0) * N_norm.transpose() * points_T;
             points_early_T(1) -= T(delta_time_early_) * vel(1) * N_norm.transpose() * points_T;
             points_early_T(2) -= T(delta_time_early_) * vel(2) * N_norm.transpose() * points_T;
@@ -92,8 +120,8 @@ struct ResidualCostFunction
         points_2D_early_T(0) = points_early_T(0)/points_early_T(2)*T(intrisic_(0,0)) + T(intrisic_(0,2));
         points_2D_early_T(1) = points_early_T(1)/points_early_T(2)*T(intrisic_(1,1)) + T(intrisic_(1,2));
         
-        points_2D_later_T(0) = points_later_T(0)/points_later_T(2)*T(intrisic_(0,0)) + T(intrisic_(0,2));
-        points_2D_later_T(1) = points_later_T(1)/points_later_T(2)*T(intrisic_(1,1)) + T(intrisic_(1,2));
+        // points_2D_later_T(0) = points_later_T(0)/points_later_T(2)*T(intrisic_(0,0)) + T(intrisic_(0,2));
+        // points_2D_later_T(1) = points_later_T(1)/points_later_T(2)*T(intrisic_(1,1)) + T(intrisic_(1,2));
 
         // cout << "points "<< points(0) << ", "<< points(1) << endl;
 
@@ -101,11 +129,16 @@ struct ResidualCostFunction
         {
             T early_loss = T(0), later_loss = T(0);
             interpolator_early_ptr_->Evaluate(points_2D_early_T(1), points_2D_early_T(0), &early_loss);
-            interpolator_later_ptr_->Evaluate(points_2D_later_T(1), points_2D_later_T(0), &later_loss);
+            // interpolator_later_ptr_->Evaluate(points_2D_later_T(1), points_2D_later_T(0), &later_loss);
 
             // cout << "intered " << early_loss << ", later " << later_loss << endl;
-            // residual[0] = early_loss; 
-            residual[0] = early_loss + later_loss; 
+            residual[0] = early_loss; 
+            residual[1] = T(1)*(ceres::pow(T(last_N_norm_(0)) - ag_v_ang[6], 2) + ceres::pow(T(last_N_norm_(1)) - ag_v_ang[7], 2));
+
+            // if constexpr(std::is_same<T, double>::value)
+            // {
+            //     cout << "ceres: res1 " << residual[0]  << ", res2 " << residual[1] << endl; 
+            // }
         }
 
         return true;
@@ -119,12 +152,13 @@ struct ResidualCostFunction
         const Eigen::Matrix3d& K,
         ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>* interpolator_early_ptr,
         ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>* interpolator_later_ptr,
-        cv::Mat& cv_earlier_timesurface, cv::Mat& cv_later_timesurface)
+        cv::Mat& cv_earlier_timesurface, cv::Mat& cv_later_timesurface,
+        Eigen::Vector2d& last_est_N_norm, double yaml_regulization_factor)
         {
-            return new ceres::AutoDiffCostFunction<ResidualCostFunction,1, 8>(
+            return new ceres::AutoDiffCostFunction<ResidualCostFunction, 2, 8>(
                 new ResidualCostFunction(points, delta_time_early, delta_time_later, K, 
                     interpolator_early_ptr, interpolator_later_ptr,
-                    cv_earlier_timesurface, cv_later_timesurface));
+                    cv_earlier_timesurface, cv_later_timesurface, last_est_N_norm, yaml_regulization_factor));
         }
 
     // inputs     
@@ -136,6 +170,8 @@ struct ResidualCostFunction
     ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>> *interpolator_later_ptr_;
     cv::Mat cv_earlier_timesurface_;
     cv::Mat cv_later_timesurface_;
+    Eigen::Vector2d last_N_norm_;
+    double yaml_regulization_factor_;
     // Eigen::Matrix3Xd ang_vel_hat_mul_x, ang_vel_hat_sqr_mul_x;
 };
 
@@ -196,10 +232,10 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_e
             cout << "getWarpedEventImage time " << (t2-t1).toSec() * 2 << endl;  // 0.00691187 s
         
         // visual optimizng process 
-        // if(iter_ < 5) 
+        // if(iter_ % 2 == 0) 
         // {
         //     cv::Mat temp_img;
-        //     getWarpedEventImage(eg_angleAxis, event_warpped_Bundle).convertTo(temp_img, CV_32FC3);
+        //     getWarpedEventImage(eg_angleAxis, eg_trans_vel, eg_N_norm, event_warpped_Bundle).convertTo(temp_img, CV_32FC3);
         //     cv::imshow("opti", temp_img);
         //     // cv::Mat temp_img_char;
         //     // cv::threshold(temp_img, temp_img_char, 0.1, 255, cv::THRESH_BINARY);
@@ -237,15 +273,15 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_e
         } 
 
             /* visualize timesurface */  
-            // {
+            {
                 
-            //     cv::Mat cv_earlier_timesurface_8U, cv_earlier_timesurface_color; 
-            //     cv::normalize(cv_earlier_timesurface, cv_earlier_timesurface_8U, 255, 0, cv::NORM_MINMAX , CV_8UC1 );
-            //     // cv_earlier_timesurface.convertTo(cv_earlier_timesurface_8U, CV_8UC1);
-            //     cv::applyColorMap(cv_earlier_timesurface_8U, cv_earlier_timesurface_color, cv::COLORMAP_JET);
-            //     cv::imshow("timesurface_early", cv_earlier_timesurface_color);
-            //     cv::waitKey(50);
-            // }
+                cv::Mat cv_earlier_timesurface_8U, cv_earlier_timesurface_color; 
+                cv::normalize(cv_earlier_timesurface, cv_earlier_timesurface_8U, 255, 0, cv::NORM_MINMAX , CV_8UC1 );
+                // cv_earlier_timesurface.convertTo(cv_earlier_timesurface_8U, CV_8UC1);
+                cv::applyColorMap(cv_earlier_timesurface_8U, cv_earlier_timesurface_color, cv::COLORMAP_JET);
+                cv::imshow("timesurface_early", cv_earlier_timesurface_color);
+                cv::waitKey(10);
+            }
             // {
             //     // visualize timesurface 
             //     cv::Mat cv_later_timesurface_8U, cv_later_timesurface_color; 
@@ -253,7 +289,7 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_e
             //     // cv_earlier_timesurface.convertTo(cv_earlier_timesurface_8U, CV_8UC1);
             //     cv::applyColorMap(cv_later_timesurface_8U, cv_later_timesurface_color, cv::COLORMAP_JET);
             //     cv::imshow("timesurface_later", cv_later_timesurface_color);
-            //     cv::waitKey(50);
+            //     cv::waitKey(10);
             // }
 
         // add gaussian on cv_earlier_timesurface
@@ -304,7 +340,8 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_e
                                                     early_time, later_time, 
                                                     camera.eg_cameraMatrix,
                                                     interpolator_early_ptr, interpolator_later_ptr,
-                                                    cv_earlier_timesurface, cv_later_timesurface);
+                                                    cv_earlier_timesurface, cv_later_timesurface,
+                                                    last_est_N_norm, yaml_regulization_factor);
 
             problem.AddResidualBlock(cost_function, nullptr, &ag_v_ang[0]);
         }
@@ -314,7 +351,7 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_e
 
         ceres::Solver::Options options;
         options.minimizer_progress_to_stdout = false;
-        options.num_threads = 2;
+        options.num_threads = 4;
         // options.logging_type = ceres::SILENT;
         options.linear_solver_type = ceres::SPARSE_SCHUR;
         options.use_nonmonotonic_steps = true;
@@ -326,6 +363,11 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_e
         problem.SetParameterUpperBound(&ag_v_ang[0],1, 20);
         problem.SetParameterLowerBound(&ag_v_ang[0],2,-20);
         problem.SetParameterUpperBound(&ag_v_ang[0],2, 20);
+
+        problem.SetParameterLowerBound(&ag_v_ang[0],6, -3.14/2);
+        problem.SetParameterUpperBound(&ag_v_ang[0],6, +3.14/2);
+        problem.SetParameterLowerBound(&ag_v_ang[0],7, -3.14/2);
+        problem.SetParameterUpperBound(&ag_v_ang[0],7, +3.14/2);
 
         ceres::Solver::Summary summary; 
 
@@ -364,9 +406,14 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_e
                 ag_v_ang[7] = est_N_norm(1);
             }
             
+            Eigen::Matrix<double, 3, 1> N_norm; 
+            N_norm(0) = cos(ag_v_ang[6]) * sin(ag_v_ang[7]);
+            N_norm(1) = sin(ag_v_ang[6]) * sin(ag_v_ang[7]);
+            N_norm(2) = cos(ag_v_ang[7]); 
             cout << "using ang" << ag_v_ang[0] << "," << ag_v_ang[1] << "," << ag_v_ang[2] <<
             " trans " << ag_v_ang[3] << "," << ag_v_ang[4] << "," << ag_v_ang[5] <<
             " norm " << ag_v_ang[6] << "," << ag_v_ang[7] << "," << 
+            " norm cos " << N_norm.transpose() << "," << 
             ", residual size " << residual_vec.size() << ", sum_0: "<<  residual_sum_0 << ", sum_old: " <<residual_sum_old << endl; 
         }
 
@@ -449,6 +496,8 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_e
     est_angleAxis = Eigen::Vector3d(ag_v_ang[0],ag_v_ang[1],ag_v_ang[2]);
     est_trans_velocity = Eigen::Vector3d(ag_v_ang[3],ag_v_ang[4],ag_v_ang[5]);
     est_N_norm = Eigen::Vector2d(ag_v_ang[6],ag_v_ang[7]);
+
+    last_est_N_norm = est_N_norm; 
 
     cout << "Loss: " << 0 << ", est_angleAxis " << est_angleAxis.transpose() << 
     ", trans " << est_trans_velocity.transpose() << ", norm " << est_N_norm.transpose() << endl;

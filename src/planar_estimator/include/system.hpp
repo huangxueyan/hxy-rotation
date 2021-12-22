@@ -122,6 +122,7 @@ private:
     float yaml_gaussian_size_sigma;
     int yaml_denoise_num;
     float yaml_default_value_factor; 
+    float yaml_regulization_factor;
 // motion 
     vector<double> vec_curr_time;
     vector<Eigen::Vector3d> vec_angular_velocity;
@@ -178,9 +179,10 @@ private:
 
     // 逻辑是t2-t1->t0. 如eq(3)所示
     Eigen::Vector3d gt_angleAxis ; // gt anglar anxis from t1->t2.  = theta / delta_time 
-    Eigen::Vector3d est_angleAxis; // estimated anglar anxis from t1->t2.  = theta / delta_time 
-    Eigen::Vector3d est_trans_velocity; // estimated anglar anxis from t1->t2, translation velocity, need mul by delta_time
-    Eigen::Vector2d est_N_norm; // estimated anglar anxis from t1->t2, translation velocity, need mul by delta_time
+    Eigen::Vector3d est_angleAxis; // estimated anglar anxis from t2->t1.  = theta / delta_time 
+    Eigen::Vector3d est_trans_velocity; // estimated anglar anxis from t2->t1, translation velocity, need mul by delta_time
+    Eigen::Vector2d est_N_norm;    // estimated anglar anxis from t2->t1, translation velocity, need mul by delta_time
+    Eigen::Vector2d last_est_N_norm; // 正则项， 控制est_N_norm的大小
 
 // output 
     size_t seq_count;

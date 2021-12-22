@@ -23,7 +23,7 @@ System::System(const string& yaml)
     yaml_gaussian_size_sigma = fSettings["yaml_gaussian_size_sigma"];
     yaml_denoise_num = fSettings["yaml_denoise_num"];
     yaml_default_value_factor = fSettings["yaml_default_value_factor"];
-
+    yaml_regulization_factor = fSettings["yaml_regulization_factor"];
 
     // undistore data 
     undist_mesh_x, undist_mesh_y;  
@@ -50,7 +50,7 @@ System::System(const string& yaml)
     // cv::namedWindow("curr_warpped_event_image_gt", cv::WINDOW_NORMAL);
     // cv::namedWindow("curr_map_image", cv::WINDOW_NORMAL);
     //  cv::namedWindow("hot_image_C3", cv::WINDOW_NORMAL);
-    //  cv::namedWindow("timesurface_early", cv::WINDOW_NORMAL);
+     cv::namedWindow("timesurface_early", cv::WINDOW_NORMAL);
     //  cv::namedWindow("timesurface_later", cv::WINDOW_NORMAL);
     //  cv::namedWindow("opti", cv::WINDOW_NORMAL);
 
@@ -75,7 +75,8 @@ System::System(const string& yaml)
 
     // output file 
     string output_dir = fSettings["output_dir"];
-    output_dir += std::to_string(yaml_sample_count) + 
+    output_dir += "regular"+std::to_string(int(yaml_regulization_factor))+
+        "_"+std::to_string(yaml_sample_count) + 
         "_timerange(0." + std::to_string(int(yaml_ts_start*10)) +"-0." +std::to_string(int(yaml_ts_end*10)) + ")"+
         "_iter"+ std::to_string(yaml_iter_num) + "_ceres" + std::to_string(yaml_ceres_iter_num)+
         "_gaussan" +std::to_string(yaml_gaussian_size) +"_sigma"+std::to_string(int(yaml_gaussian_size_sigma)) +"." +std::to_string(int(yaml_gaussian_size_sigma*10)%10)+
@@ -90,6 +91,12 @@ System::System(const string& yaml)
     // thread_view = new thread(&System::visualize, this);
     // thread_run = new thread(&System::Run, this);
 
+
+    // init value 
+    est_angleAxis.setZero();       // estimated anglar anxis from t2->t1.  = theta / delta_time 
+    est_trans_velocity.setZero();  // estimated anglar anxis from t2->t1, translation velocity, need mul by delta_time
+    est_N_norm.setZero();          // estimated anglar anxis from t2->t1, translation velocity, need mul by delta_time
+    last_est_N_norm.setZero();     // 正则项， 控制est_N_norm的大小
 
 }
 
@@ -471,7 +478,7 @@ void System::save_velocity()
     Eigen::Vector3d N_norm_cos = {costha*sinphi, sintha*sinphi, cosphi};
 
     est_velocity_file << seq_count++ <<" " << eventBundle.first_tstamp << " " << 
-                        eventBundle.last_tstamp << " " << -est_angleAxis.transpose() << " " <<
+                        eventBundle.last_tstamp << " " << est_angleAxis.transpose() << " " <<
                         est_trans_velocity.transpose() << " " << N_norm_cos.transpose() <<  endl;
 
 }

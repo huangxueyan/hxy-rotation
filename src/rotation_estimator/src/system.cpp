@@ -437,7 +437,7 @@ void System::Run()
     // getMapImage();
 
     // visualize 
-    // visualize(); 
+    visualize(); 
 
     // clear event bundle 
     // que_vec_eventData.pop();
@@ -454,8 +454,7 @@ void System::Run()
 void System::save_velocity()
 {
     // for velocity 
-    double delta_time = (eventBundle.last_tstamp - eventBundle.first_tstamp).toSec(); 
-
+    // double delta_time = (eventBundle.last_tstamp - eventBundle.first_tstamp).toSec(); 
     // minus means from t1->t2. 
     // double angle = (est_angleAxis * delta_time).norm();
     // Eigen::AngleAxisd ag_pos =  Eigen::AngleAxisd(angle, (est_angleAxis * delta_time) / angle);
@@ -591,7 +590,7 @@ void System::visualize()
         // cv::imshow("curr_map_image", curr_map_image);
         // cv::imshow("hot_image_C3", hot_image_C3);
 
-        cv::waitKey(1);
+        cv::waitKey(10);
 }
 
 

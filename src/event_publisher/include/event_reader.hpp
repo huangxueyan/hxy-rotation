@@ -36,6 +36,7 @@ public:
 
     // for txt 
     bool acquire(dvs_msgs::EventArrayPtr ptr);
+    bool acquire(dvs_msgs::EventArrayPtr ptr, std::vector<double>& vec_depth);
 
 
 private:

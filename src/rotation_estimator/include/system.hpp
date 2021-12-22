@@ -161,6 +161,7 @@ private:
     
     // std::queue<std::vector<dvs_msgs::Event>> que_vec_eventData;     // saved eventData inorder to save
     std::vector<std::vector<dvs_msgs::Event>> vec_vec_eventData;     // saved eventData inorder to save
+    std::vector<std::vector<double>> vec_vec_eventdepth;
     int vec_vec_eventData_iter;               // used to indicating the position of unpushed events. 
 
 // map 3d 

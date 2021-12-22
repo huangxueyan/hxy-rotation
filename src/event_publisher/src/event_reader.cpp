@@ -26,7 +26,8 @@ Event_reader::Event_reader(std::string yaml,
 
     // read(fSettings["groundtruth_dir"]);
 
-    string dir = fSettings["groundtruth_dir"];
+    string dir = fSettings["groundtruth_dir"]; 
+    cout << "opening " << dir << endl;
     openFile = std::ifstream(dir.c_str(),std::ios_base::in);
     if(!openFile.is_open())
     {
@@ -141,6 +142,74 @@ bool Event_reader::acquire(dvs_msgs::EventArrayPtr ptr)
             msg.y = uint16_t(std::strtod(vToken[2].c_str(), &temp));
             msg.polarity = uint8_t(std::strtod(vToken[3].c_str(), &temp));
             // eventData.emplace_back(msg);
+        }
+        vToken.clear();
+
+        ptr->events.push_back(msg);
+
+        if(target_size > 0 && count_liens-start_line >= target_size) break;
+        if(target_interval > 0 && (ptr->events.back().ts-ptr->events.front().ts).toSec() > target_interval) break;
+    }
+
+    // cout <<"sucesss events " << endl;
+
+    return true;
+
+}
+
+/** \brief 
+    \param ptr given ptr, target_size>0 means fixed size reader, target_interval>0 means fixed time reader
+*/
+bool Event_reader::acquire(dvs_msgs::EventArrayPtr ptr, std::vector<double>& vec_depth)
+{
+    // cout <<"reading events" << endl;
+    // ptr->events.clear();
+    // ptr->events.reserve(event_bundle_size);
+
+    cout << "new acquire " << endl;
+    
+    int target_size = 0;
+    double target_interval = 0;
+    if(using_fixed_time==0)
+    {
+        target_size = event_bundle_size;    
+        cout << "using fixed size " << event_bundle_size << endl;
+    }
+    else
+    {
+        target_interval = fixed_interval;
+        cout << "using fixed time " << fixed_interval << endl;
+
+    }
+
+    dvs_msgs::Event msg;
+
+    // reading 
+    string line, token; 
+    std::vector<std::string> vToken;
+
+    int start_line = max(count_liens, read_start_lines);
+    // double start_time = eventData.empty() ? 0: eventData.back().ts.toSec();
+
+    while(getline(openFile, line)) // already opened in initial function 
+    {
+        if(count_liens++ < read_start_lines) continue;
+        if(count_liens > read_max_lines) break;
+            
+        std::stringstream ss(line); 
+        while (getline(ss, token, ' '))
+            vToken.push_back(token);
+
+        if(vToken.size() == 5)
+        {
+            char* temp; 
+            msg.ts = ros::Time(std::strtod(vToken[0].c_str(), &temp));
+            msg.x = uint16_t(std::strtod(vToken[1].c_str(),&temp));
+            msg.y = uint16_t(std::strtod(vToken[2].c_str(), &temp));
+            msg.polarity = uint8_t(std::strtod(vToken[4].c_str(), &temp));
+            // eventData.emplace_back(msg);
+            vec_depth.push_back(std::strtod(vToken[3].c_str(), &temp));
+            // cout << msg.ts <<" " << msg.x <<" " << msg.y <<" " << msg.polarity << endl;
         }
         vToken.clear();
 
