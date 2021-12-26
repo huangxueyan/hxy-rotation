@@ -29,7 +29,11 @@ int main(int argc, char** argv)
     nh.param<string>("yaml", yaml, "");
 
     System* sys = new System(yaml);
-
+    if(!sys->file_opened())
+    {
+        cout << "failed opening file " << endl;
+        return 0;
+    }
     /* Event ROS version */
     // ImageGrabber imageGrabber(&sys); 
     // ros::Subscriber image_sub = nh.subscribe("/dvs/image_raw", 10, &ImageGrabber::GrabImage, &imageGrabber);

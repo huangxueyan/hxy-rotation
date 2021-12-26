@@ -9,7 +9,8 @@ using namespace std;
 /**
 * \brief given angular veloity(t1->t2), warp local event bundle become shaper
 */
-cv::Mat System::getWarpedEventImage(const Eigen::Vector3d & cur_ang_vel, const Eigen::Vector3d& cur_trans_vel, const Eigen::Vector2d& cur_Nnorm_theta, EventBundle& event_out, const PlotOption& option, bool ref_t1)
+// cv::Mat System::getWarpedEventImage(const Eigen::Vector3d & cur_ang_vel, const Eigen::Vector3d& cur_trans_vel, const Eigen::Vector2d& cur_Nnorm_theta, EventBundle& event_out, const PlotOption& option, bool ref_t1)
+cv::Mat System::getWarpedEventImage(const Eigen::Vector3d & cur_ang_vel, const Eigen::Vector3d& cur_trans_vel, const Eigen::Vector3d& cur_Nnorm_theta, EventBundle& event_out, const PlotOption& option, bool ref_t1)
 {
     // cout << "get warpped event image " << endl;
     // cout << "eventUndistorted.coord.cols() " << event_undis_Bundle.coord.cols() << endl;
@@ -51,8 +52,11 @@ cv::Mat System::getWarpedEventImage(const Eigen::Vector3d & cur_ang_vel, const E
 * \param cur_ang_pos from t2->t0. default set (0,0,0) default, so the output is not rotated. 
 * \param delta_time all events warp this time, if delta_time<0, warp to t1. 
 */
+// void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& eventOut, 
+//     const Eigen::Vector3d& cur_ang_vel, const Eigen::Vector3d& cur_trans_vel, const Eigen::Vector2d& cur_Nnorm_theta, double delta_time,  bool ref_t1 )
 void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& eventOut, 
-    const Eigen::Vector3d& cur_ang_vel, const Eigen::Vector3d& cur_trans_vel, const Eigen::Vector2d& cur_Nnorm_theta, double delta_time,  bool ref_t1 )
+    const Eigen::Vector3d& cur_ang_vel, const Eigen::Vector3d& cur_trans_vel, const Eigen::Vector3d& cur_Nnorm_theta, double delta_time,  bool ref_t1 )
+
 {
     // cout << "projecting " << endl;
     // the theta of rotation axis
@@ -104,7 +108,7 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
 
             // Eigen::Matrix3Xd trans_part = (cur_trans_vel * N_norm.transpose() * eventIn.coord_3d).array().rowwise() * vec_delta_time.transpose().array(); 
         
-            // eventOut.coord_3d = rot_first + rot_second + rot_third - trans_part; 
+            // eventOut.coord_3d = rot_first + rot_second + rot_third + trans_part; 
         }
 
         // exactly  https://zh.wikipedia.org/wiki/%E5%8D%95%E5%BA%94%E6%80%A7 
@@ -115,20 +119,45 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
             Eigen::Matrix<double,3,3> skew_m; 
             skew_m << 0.0, -axis(2), axis(1), axis(2), 0.0, -axis(0), -axis(1), axis(0), 0.0; 
 
-            double alpha = cur_Nnorm_theta(0), beta = cur_Nnorm_theta(1); // for N norm vector and control its length to 1
-            Eigen::Matrix<double, 3, 1> N_norm; 
-            N_norm(0) = cos(alpha) * sin(beta);
-            N_norm(1) = sin(alpha) * sin(beta);
-            N_norm(2) = cos(beta); 
-
-
-            Eigen::Matrix<double,3,3> rotation;
-            for(int i=0; i<eventOut.coord_3d.cols(); i++)
+            //   // cos version 
             {
-                double theta = ang_vel_norm*vec_delta_time(i);
-                rotation = Eigen::Matrix<double,3,3>::Identity() + sin(theta)*skew_m + (1.0-cos(theta))*skew_m*skew_m;
-                eventOut.coord_3d.col(i) = (rotation - cur_trans_vel * N_norm.transpose()*vec_delta_time(i)) * eventIn.coord_3d.col(i);   
+            // Eigen::Matrix<double, 3, 1> N_norm; 
+            // double alpha = cur_Nnorm_theta(0), beta = cur_Nnorm_theta(1); // for N norm vector and control its length to 1
+            // N_norm(0) = cos(alpha) * sin(beta);
+            // N_norm(1) = sin(alpha) * sin(beta);
+            // N_norm(2) = cos(beta); 
             }
+            
+
+            // vec3d norm version
+            Eigen::Matrix<double, 3, 1> N_norm = {cur_Nnorm_theta(0), cur_Nnorm_theta(1), cur_Nnorm_theta(2)}; 
+            N_norm.normalize();
+            
+            // exactly version 
+            /* 
+                Eigen::Matrix<double,3,3> rotation;
+                for(int i=0; i<eventOut.coord_3d.cols(); i++)
+                {
+                    double theta = ang_vel_norm*vec_delta_time(i);
+                    rotation = Eigen::Matrix<double,3,3>::Identity() + sin(theta)*skew_m + (1.0-cos(theta))*skew_m*skew_m;
+                    eventOut.coord_3d.col(i) = (rotation + cur_trans_vel * N_norm.transpose()*vec_delta_time(i)) * eventIn.coord_3d.col(i);   
+                }
+            */
+
+            // first order version 
+            eventOut.coord_3d =  eventIn.coord_3d.array() + 
+                ((skew_m * ang_vel_norm + cur_trans_vel * N_norm.transpose())*eventIn.coord_3d).array().rowwise() *vec_delta_time.transpose().array();   
+
+            // cout << "paramters: " << endl;
+            // cout << "cur_ang_vel " << cur_ang_vel.transpose() << ", norm " << ang_vel_norm << endl;
+            // cout << "cur_trans_vel " << cur_trans_vel.transpose() << endl;
+            // cout << "N_norm " << N_norm.transpose() << endl;
+            // cout << "trans*N " << cur_trans_vel * N_norm.transpose() << endl;
+            // cout << "skew " << skew_m * ang_vel_norm<< endl;
+            // cout << "eventIn " << eventIn.coord_3d.bottomRightCorner(3,5) << endl;
+            // cout << "eventIn time " << vec_delta_time.bottomRightCorner(1,5) << endl;
+            // cout << "eventOut " << eventOut.coord_3d.bottomRightCorner(3,5) << endl;
+
             // cout << "N_norm " << N_norm.transpose() << endl;
             // cout << "cur_ang_vel " << cur_ang_vel.transpose() << endl;
             // cout << "cur_trans_vel " << cur_trans_vel.transpose() << endl;

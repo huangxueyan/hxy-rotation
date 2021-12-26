@@ -22,11 +22,9 @@ struct ResidualCostFunction
         const double delta_time_later, 
         const Eigen::Matrix3d& K, 
         ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>* interpolator_early_ptr,
-        ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>* interpolator_later_ptr,
-        cv::Mat& cv_earlier_timesurface, cv::Mat& cv_later_timesurface):
+        ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>* interpolator_later_ptr):
             points_(points), delta_time_early_(delta_time_early), delta_time_later_(delta_time_later), 
-            intrisic_(K), interpolator_early_ptr_(interpolator_early_ptr), interpolator_later_ptr_(interpolator_later_ptr),
-            cv_earlier_timesurface_(cv_earlier_timesurface), cv_later_timesurface_(cv_later_timesurface)
+            intrisic_(K), interpolator_early_ptr_(interpolator_early_ptr), interpolator_later_ptr_(interpolator_later_ptr)
     {
 
     }
@@ -50,7 +48,7 @@ struct ResidualCostFunction
             Eigen::Matrix<T, 3, 1> ag_early = {ag_v_ang[0], ag_v_ang[1], ag_v_ang[2]};
             ag_early = ag_early * T(delta_time_early_);         
             Eigen::Matrix<T, 3, 1> ag_later = {ag_v_ang[0], ag_v_ang[1], ag_v_ang[2]};
-            ag_later = ag_later * T(delta_time_later_); 
+            ag_later = ag_later * T(delta_time_later_);  // negative time 
 
             Eigen::Matrix<T, 3, 3> Rotation_early;
             Eigen::Matrix<T, 3, 3> Rotation_later;
@@ -63,11 +61,10 @@ struct ResidualCostFunction
         vel(1) = ag_v_ang[4];
         vel(2) = ag_v_ang[5];
         
-        
         // translation part new using matrix  
         {
-            points_early_T = Rotation_early.transpose() * ((points_T.array() - T(delta_time_early_) * vel.array())).matrix();
-            points_later_T = Rotation_later.transpose() * ((points_T.array() - T(delta_time_later_) * vel.array())).matrix();
+            points_early_T = Rotation_early * points_T + T(delta_time_early_) * vel;
+            points_later_T = Rotation_later * (points_T + T(delta_time_later_) * vel);
         }
 
         points_2D_early_T(0) = points_early_T(0)/points_early_T(2)*T(intrisic_(0,0)) + T(intrisic_(0,2));
@@ -80,6 +77,7 @@ struct ResidualCostFunction
 
         /* ceres interpolate version  */
         {
+            // TODO double warp 
             T early_loss = T(0), later_loss = T(0);
             interpolator_early_ptr_->Evaluate(points_2D_early_T(1), points_2D_early_T(0), &early_loss);
             interpolator_later_ptr_->Evaluate(points_2D_later_T(1), points_2D_later_T(0), &later_loss);
@@ -99,13 +97,11 @@ struct ResidualCostFunction
         const double delta_time_later, 
         const Eigen::Matrix3d& K,
         ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>* interpolator_early_ptr,
-        ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>* interpolator_later_ptr,
-        cv::Mat& cv_earlier_timesurface, cv::Mat& cv_later_timesurface)
+        ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>* interpolator_later_ptr)
         {
             return new ceres::AutoDiffCostFunction<ResidualCostFunction,1, 6>(
                 new ResidualCostFunction(points, delta_time_early, delta_time_later, K, 
-                    interpolator_early_ptr, interpolator_later_ptr,
-                    cv_earlier_timesurface, cv_later_timesurface));
+                    interpolator_early_ptr, interpolator_later_ptr));
         }
 
     // inputs     
@@ -115,8 +111,6 @@ struct ResidualCostFunction
 
     ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>> *interpolator_early_ptr_;
     ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>> *interpolator_later_ptr_;
-    cv::Mat cv_earlier_timesurface_;
-    cv::Mat cv_later_timesurface_;
     // Eigen::Matrix3Xd ang_vel_hat_mul_x, ang_vel_hat_sqr_mul_x;
 };
 
@@ -282,8 +276,7 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_e
                                                     event_undis_Bundle.coord_3d.col(sample_idx),
                                                     early_time, later_time, 
                                                     camera.eg_cameraMatrix,
-                                                    interpolator_early_ptr, interpolator_later_ptr,
-                                                    cv_earlier_timesurface, cv_later_timesurface);
+                                                    interpolator_early_ptr, interpolator_later_ptr);
 
             problem.AddResidualBlock(cost_function, nullptr, &ag_v_ang[0]);
         }

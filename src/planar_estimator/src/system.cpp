@@ -80,11 +80,15 @@ System::System(const string& yaml)
         "_timerange(0." + std::to_string(int(yaml_ts_start*10)) +"-0." +std::to_string(int(yaml_ts_end*10)) + ")"+
         "_iter"+ std::to_string(yaml_iter_num) + "_ceres" + std::to_string(yaml_ceres_iter_num)+
         "_gaussan" +std::to_string(yaml_gaussian_size) +"_sigma"+std::to_string(int(yaml_gaussian_size_sigma)) +"." +std::to_string(int(yaml_gaussian_size_sigma*10)%10)+
-        "_denoise" + std::to_string(yaml_denoise_num) + 
-        "_defaultval" +std::to_string(int(yaml_default_value_factor)) +"." +std::to_string(int(yaml_default_value_factor*10)%10)+ ".txt";
+        "_denoise" + std::to_string(yaml_denoise_num) + ".txt";
+        // "_defaultval" +std::to_string(int(yaml_default_value_factor)) +"." +std::to_string(int(yaml_default_value_factor*10)%10)+ ".txt";
     cout << "open file " << output_dir << endl; 
-    est_velocity_file = fstream(output_dir, ios::out);
-    // est_velocity_file_quat = fstream("/home/hxy/Desktop/hxy-rotation/data/evo_data/ransac_velocity.txt", ios::out);
+
+    if(!fstream(output_dir, ios::in).is_open())
+    {
+        cout << "creating file " << endl;
+        est_velocity_file = fstream(output_dir, ios::out);
+    }
 
 
     // thread in background 
@@ -95,8 +99,11 @@ System::System(const string& yaml)
     // init value 
     est_angleAxis.setZero();       // estimated anglar anxis from t2->t1.  = theta / delta_time 
     est_trans_velocity.setZero();  // estimated anglar anxis from t2->t1, translation velocity, need mul by delta_time
-    est_N_norm.setZero();          // estimated anglar anxis from t2->t1, translation velocity, need mul by delta_time
-    last_est_N_norm.setZero();     // 正则项， 控制est_N_norm的大小
+    // est_N_norm.setZero();          // estimated anglar anxis from t2->t1, translation velocity, need mul by delta_time
+    // last_est_N_norm.setZero();     // 正则项， 控制est_N_norm的大小
+
+    est_N_norm = Eigen::Vector3d(0.1,0.1,0.9);          // estimated anglar anxis from t2->t1, translation velocity, need mul by delta_time
+    last_est_N_norm = Eigen::Vector3d(0.1,0.1,0.9);     // 正则项， 控制est_N_norm的大小
 
 }
 

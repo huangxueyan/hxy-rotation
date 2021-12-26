@@ -243,6 +243,9 @@ void EventBundle::Append(std::vector<dvs_msgs::Event>& vec_eventData)
 }
 
 
+/**
+* \brief 6dof version, since 3d->2D points should keep the same with given x,y, we multi depth to x, y.
+*/
 void EventBundle::InverseProjection(Eigen::Matrix3d& K, Eigen::Matrix3Xd& raw_coord_3d)
 {
     if(coord_3d.cols() != size)

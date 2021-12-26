@@ -82,7 +82,14 @@ System::System(const string& yaml)
         "_denoise" + std::to_string(yaml_denoise_num) + 
         "_defaultval" +std::to_string(int(yaml_default_value_factor)) +"." +std::to_string(int(yaml_default_value_factor*10)%10)+ ".txt";
     cout << "open file " << output_dir << endl; 
-    est_velocity_file = fstream(output_dir, ios::out);
+
+
+    if(!fstream(output_dir, ios::in).is_open())
+    {
+        cout << "creating file " << endl;
+        est_velocity_file = fstream(output_dir, ios::out);
+    }
+
     // est_velocity_file_quat = fstream("/home/hxy/Desktop/hxy-rotation/data/evo_data/ransac_velocity.txt", ios::out);
 
 
@@ -422,7 +429,7 @@ void System::Run()
     
     ros::Time t1 = ros::Time::now();
 
-    EstimateMotion_ransca_doublewarp_ceres(yaml_ts_start, yaml_ts_end, yaml_sample_count, yaml_iter_num);
+    EstimateMotion_ransca_ceres(yaml_ts_start, yaml_ts_end, yaml_sample_count, yaml_iter_num);
     // EstimateMotion_ransca_samples_ceres(0.2, 1);
     ros::Time t2 = ros::Time::now();
     cout << "iter time " << (t2-t1).toSec() << endl;  // 0.00691187 s
@@ -464,7 +471,7 @@ void System::save_velocity()
     // WARNING, you should use ros timestamps not double (cout for double is 6 valid numbers)
     // est_velocity_file << seq_count++ <<" " << eventBundle.first_tstamp << " " << eventBundle.last_tstamp << " " << euler_position.transpose() << endl;
     
-    est_velocity_file << seq_count++ <<" " << eventBundle.first_tstamp << " " << eventBundle.last_tstamp << " " << -est_angleAxis.transpose() << endl;
+    est_velocity_file << seq_count++ <<" " << eventBundle.first_tstamp << " " << eventBundle.last_tstamp << " " << est_angleAxis.transpose() << endl;
 
 }
 

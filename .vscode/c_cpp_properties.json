@@ -9,8 +9,8 @@
                 "/opt/ros/noetic/include/**",
                 "/usr/include/**",
                 "/home/hxy/Desktop/hxy-rotation/devel/include",
-                // "/home/hxy/Desktop/hxy-rotation/src/rotation_estimator/include",
-                "/home/hxy/Desktop/hxy-rotation/src/planar_estimator/include",
+                "/home/hxy/Desktop/hxy-rotation/src/rotation_estimator/include",
+                // "/home/hxy/Desktop/hxy-rotation/src/planar_estimator/include",
                 // "/home/hxy/Desktop/hxy-rotation/src/dof6_estimator/include",
                 "/home/hxy/Desktop/hxy-rotation/src/event_publisher/include",
                 "/home/hxy/Desktop/hxy-rotation/src/event_bundler/include"

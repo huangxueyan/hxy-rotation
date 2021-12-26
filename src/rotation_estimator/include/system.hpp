@@ -76,8 +76,7 @@ public:
 
     void EstimateMotion_kim();  
     void EstimateMotion_CM_ceres();
-    void EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_end, int sample_num, int total_iter_num);
-    void EstimateMotion_ransca_samples_ceres(double sample_start, double sample_end);
+    void EstimateMotion_ransca_ceres(double ts_start, double ts_end, int sample_num, int total_iter_num);
     void EstimateMotion_KS_ceres();
     // void EstimateMotion_ransca_once(double sample_ratio, double warp_time_ratio, double opti_steps);
     // void EstimateMotion_ransca_warp2bottom(double sample_start, double sample_end, double opti_steps);
@@ -101,6 +100,9 @@ public:
     
 // visualize 
     void visualize();
+    
+// file 
+    bool inline file_opened() {return est_velocity_file.is_open();};
 
     // bool inline checkEmpty(){return que_vec_eventData.empty();}
 

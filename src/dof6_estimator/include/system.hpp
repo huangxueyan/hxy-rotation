@@ -105,6 +105,9 @@ public:
 
     // bool inline checkEmpty(){return que_vec_eventData.empty();}
 
+// file 
+    bool inline file_opened() {return est_velocity_file.is_open();};
+
 // thread
     // thread* thread_run;
     // thread* thread_view;

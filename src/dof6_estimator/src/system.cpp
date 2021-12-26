@@ -79,10 +79,16 @@ System::System(const string& yaml)
         "_timerange(0." + std::to_string(int(yaml_ts_start*10)) +"-0." +std::to_string(int(yaml_ts_end*10)) + ")"+
         "_iter"+ std::to_string(yaml_iter_num) + "_ceres" + std::to_string(yaml_ceres_iter_num)+
         "_gaussan" +std::to_string(yaml_gaussian_size) +"_sigma"+std::to_string(int(yaml_gaussian_size_sigma)) +"." +std::to_string(int(yaml_gaussian_size_sigma*10)%10)+
-        "_denoise" + std::to_string(yaml_denoise_num) + 
-        "_defaultval" +std::to_string(int(yaml_default_value_factor)) +"." +std::to_string(int(yaml_default_value_factor*10)%10)+ ".txt";
+        "_denoise" + std::to_string(yaml_denoise_num) + ".txt";
+        // "_defaultval" +std::to_string(int(yaml_default_value_factor)) +"." +std::to_string(int(yaml_default_value_factor*10)%10)+ ".txt";
     cout << "open file " << output_dir << endl; 
-    est_velocity_file = fstream(output_dir, ios::out);
+
+    if(!fstream(output_dir, ios::in).is_open())
+    {
+        cout << "creating file " << endl;
+        est_velocity_file = fstream(output_dir, ios::out);
+    }
+
     // est_velocity_file_quat = fstream("/home/hxy/Desktop/hxy-rotation/data/evo_data/ransac_velocity.txt", ios::out);
 
 
@@ -145,7 +151,7 @@ void System::undistortEvents()
     // store 3d data
     // cout << event_undis_Bundle.coord.topLeftCorner(2,5) << endl;
 
-    event_undis_Bundle.InverseProjection(camera.eg_cameraMatrix, eventBundle.coord_3d);  // TODO required further undistort
+    event_undis_Bundle.InverseProjection(camera.eg_cameraMatrix, eventBundle.coord_3d);  
     // event_undis_Bundle.coord_3d = eventBundle.coord_3d;
     
     // store inner 
@@ -400,8 +406,8 @@ void System::Run()
         // ", vec leave:" <<vec_vec_eventData.size() - vec_vec_eventData_iter << endl; 
 
     /* undistort events */ 
-    ros::Time t1 = ros::Time::now();  // TODO undistort 
-    undistortEvents();
+    ros::Time t1 = ros::Time::now();  // TODO 6dof donot need undistort 
+    undistortEvents();                
     ros::Time t2 = ros::Time::now();
     cout << "undistort time " << (t2-t1).toSec() << endl;  // 0.00691187 s
 
@@ -474,7 +480,7 @@ void System::save_velocity()
     // est_velocity_file << seq_count++ <<" " << eventBundle.first_tstamp << " " << eventBundle.last_tstamp << " " << euler_position.transpose() << endl;
 
     est_velocity_file << seq_count++ <<" " << eventBundle.first_tstamp << " " << 
-                        eventBundle.last_tstamp << " " << -est_angleAxis.transpose() << " " <<
+                        eventBundle.last_tstamp << " " << est_angleAxis.transpose() << " " <<
                         est_trans_velocity.transpose() <<  endl;
 
 }
@@ -610,7 +616,7 @@ void System::visualize()
         // cv::imshow("curr_map_image", curr_map_image);
         // cv::imshow("hot_image_C3", hot_image_C3);
 
-        cv::waitKey(30);
+        cv::waitKey(0);
 }
 
 

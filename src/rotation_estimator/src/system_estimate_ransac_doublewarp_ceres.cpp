@@ -62,22 +62,44 @@ struct ResidualCostFunction
 
 
         // taylor first : points * skew_matrix
-        delta_points_T(0) = -ag[2]*T(points_(1)) + ag[1]*T(points_(2));  
-        delta_points_T(1) =  ag[2]*T(points_(0)) - ag[0]*T(points_(2));
-        delta_points_T(2) = -ag[1]*T(points_(0)) + ag[0]*T(points_(1));
+        {
+            delta_points_T(0) = -ag[2]*T(points_(1)) + ag[1]*T(points_(2));  
+            delta_points_T(1) =  ag[2]*T(points_(0)) - ag[0]*T(points_(2));
+            delta_points_T(2) = -ag[1]*T(points_(0)) + ag[0]*T(points_(1));
+
+            points_early_T(0) = T(points_(0)) + delta_points_T(0)*T(delta_time_early_) ;
+            points_early_T(1) = T(points_(1)) + delta_points_T(1)*T(delta_time_early_) ;
+            points_early_T(2) = T(points_(2)) + delta_points_T(2)*T(delta_time_early_) ;
+            
+            points_later_T(0) = T(points_(0)) + delta_points_T(0)*T(delta_time_later_) ;
+            points_later_T(1) = T(points_(1)) + delta_points_T(1)*T(delta_time_later_) ;
+            points_later_T(2) = T(points_(2)) + delta_points_T(2)*T(delta_time_later_) ;
+        }
 
         // taylor second : points * skew_matrix * skew_matrix
-        delta_second_points_T(0) = -ag[2]*delta_points_T(1) + ag[1]*delta_points_T(2);
-        delta_second_points_T(1) =  ag[2]*delta_points_T(0) - ag[0]*delta_points_T(2);
-        delta_second_points_T(2) = -ag[1]*delta_points_T(0) + ag[0]*delta_points_T(1);
+        {
+            // delta_second_points_T(0) = -ag[2]*delta_points_T(1) + ag[1]*delta_points_T(2);
+            // delta_second_points_T(1) =  ag[2]*delta_points_T(0) - ag[0]*delta_points_T(2);
+            // delta_second_points_T(2) = -ag[1]*delta_points_T(0) + ag[0]*delta_points_T(1);
 
-        points_early_T(0) = T(points_(0)) - delta_points_T(0)*T(delta_time_early_) ;// + delta_second_points_T(0)*T(0.5*delta_time_early_*delta_time_early_);
-        points_early_T(1) = T(points_(1)) - delta_points_T(1)*T(delta_time_early_) ;// + delta_second_points_T(1)*T(0.5*delta_time_early_*delta_time_early_);
-        points_early_T(2) = T(points_(2)) - delta_points_T(2)*T(delta_time_early_) ;// + delta_second_points_T(2)*T(0.5*delta_time_early_*delta_time_early_);
+            // points_early_T(0) = T(points_(0)) + delta_points_T(0)*T(delta_time_early_) + delta_second_points_T(0)*T(0.5*delta_time_early_*delta_time_early_);
+            // points_early_T(1) = T(points_(1)) + delta_points_T(1)*T(delta_time_early_) + delta_second_points_T(1)*T(0.5*delta_time_early_*delta_time_early_);
+            // points_early_T(2) = T(points_(2)) + delta_points_T(2)*T(delta_time_early_) + delta_second_points_T(2)*T(0.5*delta_time_early_*delta_time_early_);
+            // points_later_T(0) = T(points_(0)) + delta_points_T(0)*T(delta_time_later_) + delta_second_points_T(0)*T(0.5*delta_time_later_*delta_time_later_);
+            // points_later_T(1) = T(points_(1)) + delta_points_T(1)*T(delta_time_later_) + delta_second_points_T(1)*T(0.5*delta_time_later_*delta_time_later_);
+            // points_later_T(2) = T(points_(2)) + delta_points_T(2)*T(delta_time_later_) + delta_second_points_T(2)*T(0.5*delta_time_later_*delta_time_later_);
+        }
 
-        points_later_T(0) = T(points_(0)) - delta_points_T(0)*T(delta_time_later_) ;// + delta_second_points_T(0)*T(0.5*delta_time_later_*delta_time_later_);
-        points_later_T(1) = T(points_(1)) - delta_points_T(1)*T(delta_time_later_) ;// + delta_second_points_T(1)*T(0.5*delta_time_later_*delta_time_later_);
-        points_later_T(2) = T(points_(2)) - delta_points_T(2)*T(delta_time_later_) ;// + delta_second_points_T(2)*T(0.5*delta_time_later_*delta_time_later_);
+        {  // rotation exactly version 
+            // Eigen::Matrix<T, 3,1> points = {T(points_(0)), T(points_(1)), T(points_(2))};
+            // Eigen::Matrix<T, 3,1> angaxis = {ag[0], ag[1], ag[2]};
+
+            // Eigen::Matrix<T, 3,1> angaxis_early  = angaxis * T(delta_time_early_);
+            // ceres::AngleAxisRotatePoint(&angaxis_early(0), &points(0), &points_early_T(0));
+
+            // Eigen::Matrix<T, 3,1> angaxis_later  = angaxis * T(delta_time_later_);
+            // ceres::AngleAxisRotatePoint(&angaxis_later(0), &points(0), &points_later_T(0));
+        }
              
         // cout << "points "<< points(0) << ", "<< points(1) << endl;
         
@@ -90,19 +112,10 @@ struct ResidualCostFunction
         // cout << "points "<< points(0) << ", "<< points(1) << endl;
         
 
-        /* for version */ 
-        // {
-        // residual[0] = T(0);
-        // T value;
-        // for(int i=0; i<4; i++) // row
-        // for(int j=0; j<4; j++) // col
-        // {
-        //     interpolator_ptr_->Evaluate(points_2D_T(1)+T(i-2), points_2D_T(0) + T(j-2),  &value);
-        //     residual[0] += value;
-        // }
-        // }
 
-        /* ceres interpolate version  */
+
+
+        /* get residual ceres interpolate version  */
         {
             T early_loss = T(0), later_loss = T(0);
             interpolator_early_ptr_->Evaluate(points_2D_early_T(1), points_2D_early_T(0), &early_loss);
@@ -113,7 +126,7 @@ struct ResidualCostFunction
         }
 
  
-        /* cv mat version  */
+        /* get residual cv mat version  */
         // {
         //     int early_x_int = 0, early_y_int = 0, later_x_int = 0, later_y_int = 0;
         //     if constexpr(std::is_same<T, double>::value)
@@ -194,7 +207,7 @@ struct ResidualCostFunction
   \param [ts_start, ts_end]: time_range to form timesurface template  
   \param sample_num: the sample count beyond the time_range  
 */
-void System::EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_end, int sample_num, int total_iter_num)
+void System::EstimateMotion_ransca_ceres(double ts_start, double ts_end, int sample_num, int total_iter_num)
 {
     cout <<seq_count<< " time "<< eventBundle.first_tstamp.toSec() <<  ", total "
             << eventBundle.size << ", duration " << (eventBundle.last_tstamp - eventBundle.first_tstamp).toSec() 

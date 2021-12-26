@@ -28,7 +28,12 @@ int main(int argc, char** argv)
     string yaml;  // system configration 
     nh.param<string>("yaml", yaml, "");
 
-    System* sys = new System(yaml);
+    System* sys = new System(yaml); 
+    if(!sys->file_opened())
+    {
+        cout << "failed opening file " << endl;
+        return 0;
+    }
 
     /* Event ROS version */
     // ImageGrabber imageGrabber(&sys); 

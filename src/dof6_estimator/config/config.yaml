@@ -17,19 +17,17 @@ Version: 1.0
 #--------------------------------------------------------------------------------------------
 # Input Parameters
 #--------------------------------------------------------------------------------------------
-# groundtruth_dir: "/home/hxy/Documents/rosbag/Zhu-RAL/indoor_flying1/indoor_flying1_augdepth.txt"
-groundtruth_dir: "/home/hxy/Documents/rosbag/Zhu-RAL/outdoor_driving1/outdoor_driving1_augdepth.txt"
+groundtruth_dir: "/home/hxy/Documents/rosbag/Zhu-RAL/indoor_flying1/event_augdepth.txt"
+# groundtruth_dir: "/home/hxy/Documents/rosbag/Zhu-RAL/outdoor_driving1/event_augdepth.txt"
 
-# output_dir: "/home/hxy/Desktop/hxy-rotation/data/planar_estimation/poster_6dof/seg_poster_ransac_size30k_double_warp_"
-output_dir: "/home/hxy/Desktop/hxy-rotation/data/6dof_estimation/outdoor_driving1/seg_poster_ransac_size30k_double_warp_"
-# output_dir: "/home/hxy/Desktop/hxy-rotation/data/ransac_size30k_double_warp_"
-
-yaml_sample_count: 10000
+output_dir: "/home/hxy/Desktop/hxy-rotation/data/6dof_estimation/indoor_flying1/ransac_size30k_double_warp_"
+# output_dir: "/home/hxy/Desktop/hxy-rotation/data/6dof_estimation/outdoor_driving1/ransac_size40k_double_warp_"
+yaml_sample_count: 20000
 yaml_iter_num: 10
 yaml_ceres_iter_num: 10
 yaml_ts_start: 0.8
 yaml_ts_end: 0.8
-yaml_denoise_num: 4
+yaml_denoise_num: 2
 yaml_gaussian_size: 5
 yaml_gaussian_size_sigma: 1
 yaml_default_value_factor: 1
@@ -38,10 +36,10 @@ yaml_default_value_factor: 1
 # 2.7e7~3.1e7 for dynamic 
 # 5.7e6~5.9e6 for shapes 
 # you can use 
-read_start_lines: 0.5e4
-read_max_lines: 25000e4
-# read_start_lines: 7300e4
-# read_max_lines:  7800e4
+# read_start_lines: 0e4
+# read_max_lines: 25000e4
+read_start_lines: 1000e4
+read_max_lines:  1003e4
 
 
 #--------------------------------------------------------------------------------------------

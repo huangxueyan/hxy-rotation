@@ -61,11 +61,17 @@ public:
 // imgproc
     void Run();
     void undistortEvents();
-    cv::Mat getWarpedEventImage(const Eigen::Vector3d & temp_ang_vel, const Eigen::Vector3d& cur_trans_vel,const Eigen::Vector2d& cur_Nnorm_theta, EventBundle& event_out,
+    cv::Mat getWarpedEventImage(const Eigen::Vector3d & temp_ang_vel, const Eigen::Vector3d& cur_trans_vel,const Eigen::Vector3d& cur_Nnorm_theta, EventBundle& event_out,
         const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR, bool ref_t1 = false); 
+    // cv::Mat getWarpedEventImage(const Eigen::Vector3d & temp_ang_vel, const Eigen::Vector3d& cur_trans_vel,const Eigen::Vector2d& cur_Nnorm_theta, EventBundle& event_out,
+    //     const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR, bool ref_t1 = false); 
 
     void getWarpedEventPoints(const EventBundle& eventIn, EventBundle& eventOut,
-        const Eigen::Vector3d& cur_ang_vel,const Eigen::Vector3d& cur_trans_vel, const Eigen::Vector2d& cur_Nnorm_theta, double delta_time=-1,  bool ref_t1=false);
+        const Eigen::Vector3d& cur_ang_vel,const Eigen::Vector3d& cur_trans_vel, const Eigen::Vector3d& cur_Nnorm_theta, double delta_time=-1,  bool ref_t1=false);
+    
+    // void getWarpedEventPoints(const EventBundle& eventIn, EventBundle& eventOut,
+    //     const Eigen::Vector3d& cur_ang_vel,const Eigen::Vector3d& cur_trans_vel, const Eigen::Vector2d& cur_Nnorm_theta, double delta_time=-1,  bool ref_t1=false);
+    
     cv::Mat getImageFromBundle(EventBundle& eventBundle,
         const PlotOption option = PlotOption::U16C3_EVNET_IMAGE_COLOR, bool is_mapping=false);
 
@@ -103,6 +109,9 @@ public:
     void visualize();
 
     // bool inline checkEmpty(){return que_vec_eventData.empty();}
+
+// file 
+    bool inline file_opened() {return est_velocity_file.is_open();};
 
 // thread
     // thread* thread_run;
@@ -181,8 +190,11 @@ private:
     Eigen::Vector3d gt_angleAxis ; // gt anglar anxis from t1->t2.  = theta / delta_time 
     Eigen::Vector3d est_angleAxis; // estimated anglar anxis from t2->t1.  = theta / delta_time 
     Eigen::Vector3d est_trans_velocity; // estimated anglar anxis from t2->t1, translation velocity, need mul by delta_time
-    Eigen::Vector2d est_N_norm;    // estimated anglar anxis from t2->t1, translation velocity, need mul by delta_time
-    Eigen::Vector2d last_est_N_norm; // 正则项， 控制est_N_norm的大小
+    // Eigen::Vector2d est_N_norm;    // estimated anglar anxis from t2->t1, translation velocity, need mul by delta_time
+    // Eigen::Vector2d last_est_N_norm; // 正则项， 控制est_N_norm的大小
+
+    Eigen::Vector3d est_N_norm;    // estimated anglar anxis from t2->t1, translation velocity, need mul by delta_time
+    Eigen::Vector3d last_est_N_norm; // 正则项， 控制est_N_norm的大小
 
 // output 
     size_t seq_count;
