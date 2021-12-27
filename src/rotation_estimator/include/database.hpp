@@ -4,6 +4,7 @@
 #include <vector>
 #include <string> 
 #include <iostream>
+#include <fstream>
 
 // ros 
 #include <ros/ros.h>
@@ -46,6 +47,7 @@ struct CameraPara
 {
 
     CameraPara(); 
+    CameraPara(string filename); 
     double fx;
     double fy;
     double cx;

@@ -228,8 +228,7 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_e
                                                     event_undis_Bundle.coord_3d.col(sample_idx),
                                                     early_time, 
                                                     camera.eg_cameraMatrix,
-                                                    interpolator_early_ptr,
-                                                    cv_earlier_timesurface);
+                                                    interpolator_early_ptr);
 
             problem.AddResidualBlock(cost_function, nullptr, &ag_v_ang[0]);
         }
@@ -245,12 +244,12 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_e
         options.use_nonmonotonic_steps = true;
         options.max_num_iterations = yaml_ceres_iter_num;
         // options.initial_trust_region_radius = 1;
-        problem.SetParameterLowerBound(&ag_v_ang[0],0,-20);
-        problem.SetParameterUpperBound(&ag_v_ang[0],0, 20);
-        problem.SetParameterLowerBound(&ag_v_ang[0],1,-20);
-        problem.SetParameterUpperBound(&ag_v_ang[0],1, 20);
-        problem.SetParameterLowerBound(&ag_v_ang[0],2,-20);
-        problem.SetParameterUpperBound(&ag_v_ang[0],2, 20);
+        problem.SetParameterLowerBound(&ag_v_ang[0],0,-1);
+        problem.SetParameterUpperBound(&ag_v_ang[0],0, 1);
+        problem.SetParameterLowerBound(&ag_v_ang[0],1,-1);
+        problem.SetParameterUpperBound(&ag_v_ang[0],1, 1);
+        problem.SetParameterLowerBound(&ag_v_ang[0],2,-1);
+        problem.SetParameterUpperBound(&ag_v_ang[0],2, 1);
 
         ceres::Solver::Summary summary; 
 
@@ -370,10 +369,10 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_e
         Eigen::Vector3d cur_est_w = Eigen::Vector3d(ag_v_ang[0],ag_v_ang[1],ag_v_ang[2]);
         Eigen::Vector3d cur_est_t = Eigen::Vector3d(ag_v_ang[3],ag_v_ang[4],ag_v_ang[5]);
 
-        bool valid_esti_flag = (cur_est_w.norm()/est_angleAxis.norm() < 3) 
-                && (cur_est_t.norm()/est_trans_velocity.norm() < 3);
+        // bool valid_esti_flag = (cur_est_w.norm()/est_angleAxis.norm() < 3) 
+        //         && (cur_est_t.norm()/est_trans_velocity.norm() < 3);
 
-        if(valid_esti_flag)
+        // if(valid_esti_flag)
         {
             est_angleAxis = cur_est_w;
             est_trans_velocity = cur_est_t;
@@ -381,11 +380,11 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_e
             cout << "Loss: " << 0 << ", est_angleAxis " << est_angleAxis.transpose() << 
             ", trans " << est_trans_velocity.transpose() << endl;
         }
-        else
-        {
-            cout << "wrong estimate before" <<   est_angleAxis.transpose() << "," << cur_est_w.transpose()<< endl;
-            cout << "wrong estimate before" <<   est_angleAxis.transpose() << "," << cur_est_t.transpose()<< endl;
-        }
+        // else
+        // {
+        //     cout << "wrong estimate before" <<   est_angleAxis.transpose() << "," << cur_est_w.transpose()<< endl;
+        //     cout << "wrong estimate before" <<   est_angleAxis.transpose() << "," << cur_est_t.transpose()<< endl;
+        // }
     } 
 }
 

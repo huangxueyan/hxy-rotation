@@ -14,6 +14,9 @@ System::System(const string& yaml)
         ROS_ERROR("counld not open file %s", yaml.c_str());
     }
 
+    string calib_dir = fSettings["calib_dir"];
+    camera = CameraPara(calib_dir);
+
     yaml_iter_num = fSettings["yaml_iter_num"];
     yaml_ts_start = fSettings["yaml_ts_start"];
     yaml_ts_end = fSettings["yaml_ts_end"];
@@ -436,6 +439,8 @@ void System::Run()
     // est_angleAxis = Eigen::Vector3d(1.576866857643363, 1.7536166842524228, -1.677515728118435); // set to gt. 
     
     t1 = ros::Time::now();
+    est_angleAxis = Eigen::Vector3d::Zero();
+    est_trans_velocity = Eigen::Vector3d::Zero();
     EstimateMotion_ransca_doublewarp_ceres(yaml_ts_start, yaml_ts_end, yaml_sample_count, yaml_iter_num);
     // EstimateMotion_ransca_samples_ceres(0.2, 1);
     t2 = ros::Time::now();
@@ -616,7 +621,7 @@ void System::visualize()
         // cv::imshow("curr_map_image", curr_map_image);
         // cv::imshow("hot_image_C3", hot_image_C3);
 
-        cv::waitKey(0);
+        cv::waitKey(10);
 }
 
 

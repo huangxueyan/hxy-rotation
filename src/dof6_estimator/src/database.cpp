@@ -4,31 +4,18 @@
 using namespace std; 
 
 
-CameraPara::CameraPara()
+CameraPara::CameraPara(string filename)
 {
-    width = 346; 
-    height = 260; 
+    std::ifstream fin(filename.c_str());
+    if (!fin.is_open())
+    {
+        cout << "failed opening calib file " << endl;
+        return ;
+    }
 
-    // fx = 230.2097;
-    // fy = 231.1228;
-    // cx = 121.6862;
-    // cy = 86.8208;
-    // rd1 = -0.4136;
-    // rd2 = 0.2042;
-
-    fx = 226.38018519795807;
-    fy = 226.15002947047415;
-    cx = 173.6470807871759;
-    cy = 133.73271487507847;
-    k1 = -0.048031442223833355;
-    k2 = 0.011330957517194437;
-    p1 = -0.055378166304281135;
-    p2 = 0.021500973881459395;
-    k3 = 0.0;
-
-
-    cameraMatrix = (cv::Mat_<float>(3,3) << 
-                    fx, 0, cx , 0, fy, cy, 0, 0, 1); 
+    fin >> fx >> fy >> cx >> cy >> k1 >> k2 >> p1 >> p2 >> k3 >> width >> height;
+    
+    cameraMatrix = (cv::Mat_<float>(3,3) << fx, 0, cx , 0, fy, cy, 0, 0, 1); 
     distCoeffs = (cv::Mat_<double>(1,5) << k1, k2, p1, p2, k3); 
 
     // cout << "camera param:" << endl;
@@ -48,6 +35,57 @@ CameraPara::CameraPara()
     cout << "camera matrix:: \n" << cameraMatrix << endl;
     cout << "camera matrix eigen: \n" << eg_cameraMatrix << endl;
     cout << "map matrix eigen: \n" << eg_MapMatrix << endl;
+}
+
+CameraPara::CameraPara()
+{
+    width = 346; 
+    height = 260; 
+
+    // indoor_driving1 
+    // fx = 226.38018519795807;
+    // fy = 226.15002947047415;
+    // cx = 173.6470807871759;
+    // cy = 133.73271487507847;
+    // k1 = -0.048031442223833355;
+    // k2 = 0.011330957517194437;
+    // p1 = -0.055378166304281135;
+    // p2 = 0.021500973881459395;
+    // k3 = 0.0;
+
+      
+    // outdoor_driving1 
+    // fx = 223.1117516327428;
+    // fy =  222.9723608800784;
+    // cx = 174.7696749980204;
+    // cy = 128.89224876369192;
+    // k1 = -0.023142330649874532;
+    // k2 = -0.03852833693290194;
+    // p1 = 0.007851617759475266;
+    // p2 = 0.008707820879327087;
+    // k3 = 0.0;
+
+
+    // cameraMatrix = (cv::Mat_<float>(3,3) << fx, 0, cx , 0, fy, cy, 0, 0, 1); 
+    // distCoeffs = (cv::Mat_<double>(1,5) << k1, k2, p1, p2, k3); 
+
+    // // cout << "camera param:" << endl;
+    // // cout << cameraMatrix << endl; 
+
+    // cv::cv2eigen(cameraMatrix, eg_cameraMatrix);
+    // // cout << eg_cameraMatrix << endl; 
+
+    // // the map展示的虚拟相机k内参可以自定义大小。 
+    // height_map = 2 * height; 
+    // width_map = 2 * width;
+    // eg_MapMatrix = eg_cameraMatrix; // deep copy
+
+    // eg_MapMatrix(0,2) = width_map/2;
+    // eg_MapMatrix(1,2) = height_map/2;
+    
+    // cout << "camera matrix:: \n" << cameraMatrix << endl;
+    // cout << "camera matrix eigen: \n" << eg_cameraMatrix << endl;
+    // cout << "map matrix eigen: \n" << eg_MapMatrix << endl;
 
 }
 

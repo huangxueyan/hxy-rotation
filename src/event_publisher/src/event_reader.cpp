@@ -166,7 +166,7 @@ bool Event_reader::acquire(dvs_msgs::EventArrayPtr ptr, std::vector<double>& vec
     // ptr->events.clear();
     // ptr->events.reserve(event_bundle_size);
 
-    cout << "new acquire " << endl;
+    // cout << "new acquire " << endl;
     
     int target_size = 0;
     double target_interval = 0;

@@ -23,6 +23,7 @@ System::System(const string& yaml)
     yaml_gaussian_size_sigma = fSettings["yaml_gaussian_size_sigma"];
     yaml_denoise_num = fSettings["yaml_denoise_num"];
     yaml_default_value_factor = fSettings["yaml_default_value_factor"];
+    yaml_ceres_iter_thread = fSettings["yaml_ceres_iter_thread"];
 
 
     // undistore data 
@@ -124,6 +125,7 @@ void System::undistortEvents()
     
     vector<cv::Point2f> raw_event_points(point_size), undis_event_points(point_size);
 
+    #pragma omp parallel for   
     for(size_t i=0; i<point_size; ++i)
         raw_event_points[i] = cv::Point2f(eventBundle.coord(0,i),eventBundle.coord(1,i));
     
@@ -385,8 +387,8 @@ void System::Run()
 {
     
     /* update eventBundle */ 
-    eventBundle.Append(vec_vec_eventData[vec_vec_eventData_iter]);      
-    vec_vec_eventData_iter++;
+        eventBundle.Append(vec_vec_eventData[vec_vec_eventData_iter]);      
+        vec_vec_eventData_iter++;
 
     // check current eventsize or event interval 
     double time_interval = (eventBundle.last_tstamp-eventBundle.first_tstamp).toSec();
@@ -401,7 +403,12 @@ void System::Run()
         // ", vec leave:" <<vec_vec_eventData.size() - vec_vec_eventData_iter << endl; 
 
     /* undistort events */ 
-    undistortEvents();
+    ros::Time t1, t2; 
+
+    t1 = ros::Time::now();
+        undistortEvents();
+    t2 = ros::Time::now();
+    cout << "undistortEvents time" << (t2-t1).toSec() << endl;  // 0.00691187 s
 
     /* get local bundle sharper using self derived iteration CM method */ 
     // est_angleAxis = Eigen::Vector3d(2.0840802, 2.6272788, 4.7796245); // set to 0. 
@@ -427,11 +434,10 @@ void System::Run()
     // est_angleAxis = Eigen::Vector3d(0,0,0); // set to 0. 
     // est_angleAxis = Eigen::Vector3d(1.576866857643363, 1.7536166842524228, -1.677515728118435); // set to gt. 
     
-    ros::Time t1 = ros::Time::now();
-
+    t1 = ros::Time::now();
     EstimateMotion_ransca_ceres(yaml_ts_start, yaml_ts_end, yaml_sample_count, yaml_iter_num);
     // EstimateMotion_ransca_samples_ceres(0.2, 1);
-    ros::Time t2 = ros::Time::now();
+    t2 = ros::Time::now();
     cout << "iter time " << (t2-t1).toSec() << endl;  // 0.00691187 s
     cout << "-----------------------" << endl;
 

@@ -18,14 +18,16 @@ Version: 1.0
 # Input Parameters
 #--------------------------------------------------------------------------------------------
 # groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/poster_6dof/events.txt"
-groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/poster_translation/events.txt"
+# groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/poster_translation/events.txt"
+groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/poster_hdr/events.txt"
 
 # output_dir: "/home/hxy/Desktop/hxy-rotation/data/planar_estimation/poster_6dof/const_norm3d_"
-output_dir: "/home/hxy/Desktop/hxy-rotation/data/planar_estimation/poster_translation/firstorder_norm3d_"
+# output_dir: "/home/hxy/Desktop/hxy-rotation/data/planar_estimation/poster_translation/init0_norm3d_size20k_"
+output_dir: "/home/hxy/Desktop/hxy-rotation/data/planar_estimation/poster_hdr/init0_norm3d_size30k_"
 # output_dir: "/home/hxy/Desktop/hxy-rotation/data/ransac_size30k_double_warp_"
 
 yaml_sample_count: 10000
-yaml_iter_num: 20
+yaml_iter_num: 10
 yaml_ceres_iter_num: 10
 yaml_ts_start: 0.8
 yaml_ts_end: 0.8

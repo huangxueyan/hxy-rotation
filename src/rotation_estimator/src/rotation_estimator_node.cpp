@@ -32,7 +32,7 @@ int main(int argc, char** argv)
     if(!sys->file_opened())
     {
         cout << "failed opening file " << endl;
-        return 0;
+        // return 0;
     }
     /* Event ROS version */
     // ImageGrabber imageGrabber(&sys); 
@@ -43,14 +43,18 @@ int main(int argc, char** argv)
     // // ros::Subscriber pose_sub = nh.subscribe("/optitrack/davis", 10, &PoseGrabber::GrabPose, &poseGrabber);
     // ros::spin();
     
-    ros::Time t1 = ros::Time::now(); 
     /** Event TXT version */ 
     Event_reader event_reader(yaml); 
     while (true)
     {
         // read data 
-        dvs_msgs::EventArrayPtr msg_ptr = dvs_msgs::EventArrayPtr(new dvs_msgs::EventArray());
-        event_reader.acquire(msg_ptr);
+        ros::Time t1, t2; 
+        t1 = ros::Time::now();
+            dvs_msgs::EventArrayPtr msg_ptr = dvs_msgs::EventArrayPtr(new dvs_msgs::EventArray());
+            event_reader.acquire(msg_ptr);
+        t2 = ros::Time::now();
+        cout << "event_reader.acquire time " << (t2-t1).toSec() << endl;  // 0.50643
+
 
         if(msg_ptr==nullptr || msg_ptr->events.empty() )
         {
@@ -58,12 +62,15 @@ int main(int argc, char** argv)
             break;
         }
 
-        sys->pushEventData(msg_ptr->events);
+
+        t1 = ros::Time::now();
+            sys->pushEventData(msg_ptr->events);
+        t2 = ros::Time::now();
+        cout << "sys pushEventData" << (t2-t1).toSec() << endl;  // 0.00691187 s
+
         // cout << "success reveive" << endl;
         // break;
     }
-    ros::Time t2 = ros::Time::now(); 
-    cout << "total cost time " << (t2-t1).toSec() << endl;
 
     cout << "shutdown rotation estimator" << endl;
     return 0;

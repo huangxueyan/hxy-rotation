@@ -133,8 +133,7 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
             Eigen::Matrix<double, 3, 1> N_norm = {cur_Nnorm_theta(0), cur_Nnorm_theta(1), cur_Nnorm_theta(2)}; 
             N_norm.normalize();
             
-            // exactly version 
-            /* 
+            // exactly version  
                 Eigen::Matrix<double,3,3> rotation;
                 for(int i=0; i<eventOut.coord_3d.cols(); i++)
                 {
@@ -142,11 +141,11 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
                     rotation = Eigen::Matrix<double,3,3>::Identity() + sin(theta)*skew_m + (1.0-cos(theta))*skew_m*skew_m;
                     eventOut.coord_3d.col(i) = (rotation + cur_trans_vel * N_norm.transpose()*vec_delta_time(i)) * eventIn.coord_3d.col(i);   
                 }
-            */
+            
 
             // first order version 
-            eventOut.coord_3d =  eventIn.coord_3d.array() + 
-                ((skew_m * ang_vel_norm + cur_trans_vel * N_norm.transpose())*eventIn.coord_3d).array().rowwise() *vec_delta_time.transpose().array();   
+            // eventOut.coord_3d =  eventIn.coord_3d.array() + 
+            //     ((skew_m * ang_vel_norm + cur_trans_vel * N_norm.transpose())*eventIn.coord_3d).array().rowwise() *vec_delta_time.transpose().array();   
 
             // cout << "paramters: " << endl;
             // cout << "cur_ang_vel " << cur_ang_vel.transpose() << ", norm " << ang_vel_norm << endl;

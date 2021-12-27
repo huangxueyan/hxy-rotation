@@ -124,6 +124,7 @@ private:
     float yaml_gaussian_size_sigma;
     int yaml_denoise_num;
     float yaml_default_value_factor; 
+    int yaml_ceres_iter_thread;
 // motion 
     vector<double> vec_curr_time;
     vector<Eigen::Vector3d> vec_angular_velocity;

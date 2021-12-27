@@ -4,6 +4,9 @@
 #include <sophus/so3.hpp>
 #include <algorithm>
 #include <ceres/cubic_interpolation.h>
+
+#include <omp.h>
+
 using namespace std;
 
 
@@ -24,6 +27,7 @@ struct ResidualCostFunction
         // cout << "CM loss init: size " << N << endl;
 
     }
+
 
     // operator 
     template<typename T> 
@@ -62,6 +66,7 @@ struct ResidualCostFunction
         new_coord_3d.row(0) = new_coord_3d.row(0).array() / new_coord_3d.row(2).array() * T(_intrisic(0,0)) + T(_intrisic(0,2));
         new_coord_3d.row(1) = new_coord_3d.row(1).array() / new_coord_3d.row(2).array() * T(_intrisic(1,1)) + T(_intrisic(1,2));
         
+
         for(int i=0; i<N; i++)
         {
             interpolator_early_ptr_->Evaluate(new_coord_3d(1, i), new_coord_3d(0,i), &residual[i]);
@@ -91,9 +96,6 @@ struct ResidualCostFunction
 
     // Eigen::Matrix3Xd ang_vel_hat_mul_x, ang_vel_hat_sqr_mul_x;
 };
-
-
-
 
 
 
@@ -184,15 +186,10 @@ void System::EstimateMotion_ransca_ceres(double ts_start, double ts_end, int sam
         // sample events 
         // select 100 random points, and warp delta_t < min(t_point_delta_t). 
         // accumulate all time difference before and after warpped points. 
-    t1 = ros::Time::now();
         std::vector<int> vec_sampled_idx; 
         int samples_count = std::min(sample_num, int(eventBundle.size)); 
         getSampledVec(vec_sampled_idx, samples_count, 0, 1);
-    t2 = ros::Time::now();
-    if(show_time_info)
-        cout << "getSampledVec time " << (t2-t1).toSec() << endl; // 0.000473817
 
-    t1 = ros::Time::now();  
         // init problem 
         ceres::Problem problem; 
         ceres::CostFunction* cost_function = ResidualCostFunction::Create(
@@ -201,17 +198,17 @@ void System::EstimateMotion_ransca_ceres(double ts_start, double ts_end, int sam
                                                     camera.eg_cameraMatrix,
                                                     interpolator_early_ptr);
         problem.AddResidualBlock(cost_function, nullptr, &angleAxis[0]);
-    t2 = ros::Time::now();
-    if(show_time_info)
-        cout << "add residual time " << (t2-t1).toSec() << endl;  // 0.00168042
 
         ceres::Solver::Options options;
         options.minimizer_progress_to_stdout = false;
-        options.num_threads = 2;
+        options.num_threads = yaml_ceres_iter_thread;
         // options.logging_type = ceres::SILENT;
         options.linear_solver_type = ceres::SPARSE_SCHUR;
-        options.use_nonmonotonic_steps = true;
+        options.linear_solver_type = ceres::DENSE_NORMAL_CHOLESKY;
+
+        // options.use_nonmonotonic_steps = true;
         options.max_num_iterations = yaml_ceres_iter_num;
+
         // options.initial_trust_region_radius = 1;
         problem.SetParameterLowerBound(&angleAxis[0],0,-20);
         problem.SetParameterLowerBound(&angleAxis[0],1,-20);
@@ -223,38 +220,39 @@ void System::EstimateMotion_ransca_ceres(double ts_start, double ts_end, int sam
         ceres::Solver::Summary summary; 
 
         // evaluate: choose init velocity, test whether using last_est or {0,0,0},
-        if(iter_ == 1)
-        {
-            double cost = 0;
-            vector<double> residual_vec; 
-            // previous old velocity  
-            angleAxis[0] = est_angleAxis(0); angleAxis[1] = est_angleAxis(1); angleAxis[1] = est_angleAxis(2); 
-            problem.Evaluate(ceres::Problem::EvaluateOptions(), &cost, &residual_vec, nullptr, nullptr);
-            double residual_sum_old = std::accumulate(residual_vec.begin(), residual_vec.end(), 0.0);
-            // 0 init 
-            angleAxis[0] = 0; angleAxis[1] = 0; angleAxis[2] = 0;  
-            problem.Evaluate(ceres::Problem::EvaluateOptions(), &cost, &residual_vec, nullptr, nullptr);
-            double residual_sum_0 = std::accumulate(residual_vec.begin(), residual_vec.end(), 0.0);
+        // if(iter_ == 1)
+        // {
+        //     double cost = 0;
+        //     vector<double> residual_vec; 
+        //     // previous old velocity  
+        //     angleAxis[0] = est_angleAxis(0); angleAxis[1] = est_angleAxis(1); angleAxis[1] = est_angleAxis(2); 
+        //     problem.Evaluate(ceres::Problem::EvaluateOptions(), &cost, &residual_vec, nullptr, nullptr);
+        //     double residual_sum_old = std::accumulate(residual_vec.begin(), residual_vec.end(), 0.0);
+        //     // 0 init 
+        //     angleAxis[0] = 0; angleAxis[1] = 0; angleAxis[2] = 0;  
+        //     problem.Evaluate(ceres::Problem::EvaluateOptions(), &cost, &residual_vec, nullptr, nullptr);
+        //     double residual_sum_0 = std::accumulate(residual_vec.begin(), residual_vec.end(), 0.0);
 
-            if(residual_sum_old < residual_sum_0)
-            {
-                angleAxis[0] = est_angleAxis(0); 
-                angleAxis[1] = est_angleAxis(1);
-                angleAxis[1] = est_angleAxis(2);  
-            }
+        //     if(residual_sum_old < residual_sum_0)
+        //     {
+        //         angleAxis[0] = est_angleAxis(0); 
+        //         angleAxis[1] = est_angleAxis(1);
+        //         angleAxis[1] = est_angleAxis(2);  
+        //     }
             
-            cout << "using " << angleAxis[0] << "," << angleAxis[1] << "," << angleAxis[2] 
-            << ", residual size " << residual_vec.size() << ", sum_0: "<<  residual_sum_0 << ", sum_old: " <<residual_sum_old << endl; 
-        }
+        //     cout << "using " << angleAxis[0] << "," << angleAxis[1] << "," << angleAxis[2] 
+        //     << ", residual size " << residual_vec.size() << ", sum_0: "<<  residual_sum_0 << ", sum_old: " <<residual_sum_old << endl; 
+        // }
 
 
         t1 = ros::Time::now();
-        ceres::Solve(options, &problem, &summary);
+            ceres::Solve(options, &problem, &summary);
         t2 = ros::Time::now();
         if(show_time_info)
             cout << "ceres time " << (t2-t1).toSec() << endl;  // 0.00383356 
-        
-        // cout << summary.BriefReport() << endl;
+
+        // if(iter_%9 == 0)
+        //     cout << summary.FullReport() << endl;
 
         // cout << "   iter " << iter_ << ", ceres iters " << summary.iterations.size()<< endl;
         // if(summary.BriefReport().find("NO_CONVERGENCE") != std::string::npos)
