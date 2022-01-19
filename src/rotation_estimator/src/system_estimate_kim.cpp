@@ -114,7 +114,7 @@ void System::EstimateMotion_kim()
 {
     // paramters 
     cout << "time "<< eventBundle.first_tstamp.toSec() <<  ", total " << eventBundle.size << endl;
-    int max_iter_count = 65;
+    int max_iter_count = 100; // roginal 65
         // velocity optimize steps and smooth factor
         double mu_event = 0.05, nu_event = 1; 
         double rho_event = 0.995;
@@ -146,27 +146,27 @@ void System::EstimateMotion_kim()
         }
         
         // visualize
-        if(false && i % output_sample == 0)
-        {
-            getWarpedEventImage(est_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32F);
-            cv::imshow("opti", curr_warpped_event_image);
-            cv::waitKey(10);
+        // if(false && i % output_sample == 0)
+        // {
+        //     getWarpedEventImage(est_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32F);
+        //     cv::imshow("opti", curr_warpped_event_image);
+        //     cv::waitKey(10);
 
-            cout << "iter " << i <<", scale " << mu_event / std::sqrt(nu_event) << endl;
-            // cout << "  jacobian " << jacobian.transpose() << endl;
-            cout << "  compensator   " << angular_velocity_compensator.transpose() << endl;
-            int non_zero = 0;
-            cout << "  var of est " << getVar(curr_warpped_event_image, non_zero, CV_32F) <<" non_zero " << non_zero <<  endl;
+        //     cout << "iter " << i <<", scale " << mu_event / std::sqrt(nu_event) << endl;
+        //     // cout << "  jacobian " << jacobian.transpose() << endl;
+        //     cout << "  compensator   " << angular_velocity_compensator.transpose() << endl;
+        //     int non_zero = 0;
+        //     cout << "  var of est " << getVar(curr_warpped_event_image, non_zero, CV_32F) <<" non_zero " << non_zero <<  endl;
             
-        }
+        // }
     }
 
-    // getWarpedEventImage(est_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32F);
+    getWarpedEventImage(est_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32F);
     // // cv::normalize(curr_warpped_event_image, curr_warpped_event_image, 0, 255, cv::NORM_MINMAX, CV_8UC3);
     // cv::imshow("opti", curr_warpped_event_image/3);
     // cv::waitKey(10);
 
-    // cout << "estimated angleAxis " <<  est_angleAxis.transpose() << endl;
+    cout << "estimated angleAxis " <<  est_angleAxis.transpose() << endl;
     // cout << "gt angleAxis   " << gt_angleAxis.transpose() << endl;
 
 } 

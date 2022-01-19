@@ -43,7 +43,6 @@ int main(int argc, char** argv)
     // // ros::Subscriber pose_sub = nh.subscribe("/optitrack/davis", 10, &PoseGrabber::GrabPose, &poseGrabber);
     // ros::spin();
     
-    ros::Time t1 = ros::Time::now(); 
     /** Event TXT version */ 
     Event_reader event_reader(yaml); 
     while (true)
@@ -62,8 +61,8 @@ int main(int argc, char** argv)
         // cout << "success reveive" << endl;
         // break;
     }
-    ros::Time t2 = ros::Time::now(); 
-    cout << "total cost time " << (t2-t1).toSec() << endl;
+
+    cout << "total evaluate time "<< sys->total_evaluate_time << endl;
 
     cout << "shutdown rotation estimator" << endl;
     return 0;

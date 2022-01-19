@@ -81,38 +81,9 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
             // cout <<"using const delta " << delta_time << endl;
         }
                 
-        
-        // rodrigues version wiki
-        {   // approximation 
-            // Eigen::Matrix<double,3,1> axis = cur_ang_vel.normalized();
-            // Eigen::VectorXd angle_vec = -vec_delta_time * ang_vel_norm ;
-
-            // Eigen::VectorXd cos_angle_vec = angle_vec.array().cos();
-            // Eigen::VectorXd sin_angle_vec = angle_vec.array().sin();
-
-            // Eigen::Matrix3Xd rot_first = eventIn.coord_3d.array().rowwise() * cos_angle_vec.transpose().array(); 
-
-            // Eigen::Matrix3Xd rot_second = (-eventIn.coord_3d.array().colwise().cross(axis)).array().rowwise() * sin_angle_vec.transpose().array();
-
-            // Eigen::VectorXd third1 = axis.transpose() * eventIn.coord_3d;
-            // Eigen::VectorXd third2 = third1.array() * (1-cos_angle_vec.array()).array();;
-            // Eigen::Matrix3Xd rot_third = axis * third2.transpose();
-        
-            // // translation part 
-            
-            // double alpha = cur_Nnorm_theta(0), beta = cur_Nnorm_theta(1); // for N norm vector and control its length to 1
-            // Eigen::Matrix<double, 3, 1> N_norm; 
-            // N_norm(0) = cos(alpha) * sin(beta);
-            // N_norm(1) = sin(alpha) * sin(beta);
-            // N_norm(2) = cos(beta); 
-
-            // Eigen::Matrix3Xd trans_part = (cur_trans_vel * N_norm.transpose() * eventIn.coord_3d).array().rowwise() * vec_delta_time.transpose().array(); 
-        
-            // eventOut.coord_3d = rot_first + rot_second + rot_third + trans_part; 
-        }
 
         // exactly  https://zh.wikipedia.org/wiki/%E5%8D%95%E5%BA%94%E6%80%A7 
-        {   
+          
 
             // R and t are from t2->t1.
             Eigen::Matrix<double,3,1> axis = cur_ang_vel.normalized();
@@ -141,8 +112,8 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
                     rotation = Eigen::Matrix<double,3,3>::Identity() + sin(theta)*skew_m + (1.0-cos(theta))*skew_m*skew_m;
                     eventOut.coord_3d.col(i) = (rotation + cur_trans_vel * N_norm.transpose()*vec_delta_time(i)) * eventIn.coord_3d.col(i);   
                 }
-            
-
+        
+        
             // first order version 
             // eventOut.coord_3d =  eventIn.coord_3d.array() + 
             //     ((skew_m * ang_vel_norm + cur_trans_vel * N_norm.transpose())*eventIn.coord_3d).array().rowwise() *vec_delta_time.transpose().array();   
@@ -164,7 +135,7 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
             // cout << "rotation inv \n" << (rotation - cur_trans_vel * N_norm.transpose()*vec_delta_time(200)).inverse() << endl; 
             // cout << "eventOut.coord_3d.col(200) " << eventOut.coord_3d.col(200).transpose() << endl;
             // cout << "eventIn.coord_3d.col(200) " << eventIn.coord_3d.col(200).transpose() << endl;
-        }
+        
 
         // cout << "last \n " << eventOut.coord_3d.bottomRightCorner(3,5) <<  endl;
 

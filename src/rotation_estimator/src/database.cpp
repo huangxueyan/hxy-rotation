@@ -130,6 +130,7 @@ void EventBundle::DiscriminateInner(int width, int height)
     isInner.resize(size); 
     // if(x.size() != isInner.size()) cout << "inner wrong size" << endl;
 
+    #pragma omp parallel for 
     for(uint32_t i = 0; i < size; ++i)
     {
         if(coord(0,i)<3 || coord(0,i)>=(width-3) || coord(1,i)<3 || coord(1,i)>=(height-3)) 

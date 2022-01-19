@@ -21,6 +21,7 @@ System::System(const string& yaml)
     yaml_ts_start = fSettings["yaml_ts_start"];
     yaml_ts_end = fSettings["yaml_ts_end"];
     yaml_sample_count = fSettings["yaml_sample_count"];
+    yaml_ceres_iter_thread = fSettings["yaml_ceres_iter_thread"];
     yaml_ceres_iter_num = fSettings["yaml_ceres_iter_num"];
     yaml_gaussian_size = fSettings["yaml_gaussian_size"];
     yaml_gaussian_size_sigma = fSettings["yaml_gaussian_size_sigma"];
@@ -77,19 +78,19 @@ System::System(const string& yaml)
     curr_warpped_event_image_gt = cv::Mat(camera.height,camera.width, CV_32F); 
 
     // output file 
-    string output_dir = fSettings["output_dir"];
-    output_dir += std::to_string(yaml_sample_count) + 
+    output_dir = string(fSettings["output_dir"]);
+    string output_path = output_dir + std::to_string(yaml_sample_count) + 
         "_timerange(0." + std::to_string(int(yaml_ts_start*10)) +"-0." +std::to_string(int(yaml_ts_end*10)) + ")"+
         "_iter"+ std::to_string(yaml_iter_num) + "_ceres" + std::to_string(yaml_ceres_iter_num)+
         "_gaussan" +std::to_string(yaml_gaussian_size) +"_sigma"+std::to_string(int(yaml_gaussian_size_sigma)) +"." +std::to_string(int(yaml_gaussian_size_sigma*10)%10)+
         "_denoise" + std::to_string(yaml_denoise_num) + ".txt";
         // "_defaultval" +std::to_string(int(yaml_default_value_factor)) +"." +std::to_string(int(yaml_default_value_factor*10)%10)+ ".txt";
-    cout << "open file " << output_dir << endl; 
+    cout << "open file " << output_path << endl; 
 
-    if(!fstream(output_dir, ios::in).is_open())
+    if(!fstream(output_path, ios::in).is_open())
     {
         cout << "creating file " << endl;
-        est_velocity_file = fstream(output_dir, ios::out);
+        est_velocity_file = fstream(output_path, ios::out);
     }
 
     // est_velocity_file_quat = fstream("/home/hxy/Desktop/hxy-rotation/data/evo_data/ransac_velocity.txt", ios::out);
@@ -99,6 +100,13 @@ System::System(const string& yaml)
     // thread_view = new thread(&System::visualize, this);
     // thread_run = new thread(&System::Run, this);
 
+
+    // init 
+    total_evaluate_time = 0;
+
+    est_angleAxis = Eigen::Vector3d(0.01,0.01,0.01);       // estimated anglar anxis from t2->t1.  = theta / delta_time 
+    est_trans_velocity = Eigen::Vector3d(0.01,0.01,0.01);  // estimated anglar anxis from t2->t1, translation velocity, need mul by delta_time
+    last_est_var << 0.01,0.01,0.01,0.01,0.01,0.01;
 
 }
 
@@ -412,7 +420,7 @@ void System::Run()
     ros::Time t1 = ros::Time::now();  // TODO 6dof donot need undistort 
     undistortEvents();                
     ros::Time t2 = ros::Time::now();
-    cout << "undistort time " << (t2-t1).toSec() << endl;  // 0.00691187 s
+    // cout << "undistort time " << (t2-t1).toSec() << endl;  // 0.00691187 s
 
     /* get local bundle sharper using self derived iteration CM method */ 
     // est_angleAxis = Eigen::Vector3d(2.0840802, 2.6272788, 4.7796245); // set to 0. 
@@ -439,12 +447,13 @@ void System::Run()
     // est_angleAxis = Eigen::Vector3d(1.576866857643363, 1.7536166842524228, -1.677515728118435); // set to gt. 
     
     t1 = ros::Time::now();
-    est_angleAxis = Eigen::Vector3d::Zero();
-    est_trans_velocity = Eigen::Vector3d::Zero();
+    // est_angleAxis = Eigen::Vector3d::Zero();
+    // est_trans_velocity = Eigen::Vector3d::Zero();
     EstimateMotion_ransca_doublewarp_ceres(yaml_ts_start, yaml_ts_end, yaml_sample_count, yaml_iter_num);
     // EstimateMotion_ransca_samples_ceres(0.2, 1);
     t2 = ros::Time::now();
-    cout << "iter time " << (t2-t1).toSec() << endl;  // 0.00691187 s
+    total_evaluate_time += (t2-t1).toSec();
+    cout << "total evl time " << total_evaluate_time << ", cur batch time " << (t2-t1).toSec() << endl;  // 0.00691187 s
     cout << "-----------------------" << endl;
 
 
@@ -617,9 +626,16 @@ void System::visualize()
         // getWarpedEventImage(est_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);
         cv::imshow("curr_warpped_event_image", curr_warpped_event_image);
         // cv::imshow("curr_warpped_event_image_gt", curr_warpped_event_image_gt);
-
         // cv::imshow("curr_map_image", curr_map_image);
         // cv::imshow("hot_image_C3", hot_image_C3);
+
+        // cv::normalize(curr_undis_event_image, curr_undis_event_image, 0,255, cv::NORM_MINMAX, CV_8U);
+        // cv::normalize(curr_warpped_event_image, curr_warpped_event_image, 0,255, cv::NORM_MINMAX, CV_8U);
+        // cv::threshold(curr_warpped_event_image, curr_warpped_event_image, 0.1, 255, CV_8U);
+        // cv::threshold(curr_undis_event_image, curr_undis_event_image, 0.1, 255, CV_8U);
+        // cv::imwrite(output_dir + std::to_string(seq_count) + "_undis.png", curr_undis_event_image);
+        // cv::imwrite(output_dir + std::to_string(seq_count) + "_warp.png", curr_warpped_event_image);
+        
 
         cv::waitKey(10);
 }

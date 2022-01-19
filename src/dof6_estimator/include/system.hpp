@@ -112,6 +112,8 @@ public:
     // thread* thread_run;
     // thread* thread_view;
     // std::mutex que_vec_eventData_mutex;
+    double total_evaluate_time;
+
 
 private:
 
@@ -126,6 +128,7 @@ private:
     float yaml_gaussian_size_sigma;
     int yaml_denoise_num;
     float yaml_default_value_factor; 
+    int yaml_ceres_iter_thread;
 // motion 
     vector<double> vec_curr_time;
     vector<Eigen::Vector3d> vec_angular_velocity;
@@ -134,7 +137,6 @@ private:
 
 // optimization 
     cv::Mat cv_3D_surface_index, cv_3D_surface_index_count ;
-
 // camera param
     CameraPara camera; 
 
@@ -185,8 +187,12 @@ private:
     Eigen::Vector3d gt_angleAxis ; // gt anglar anxis from t1->t2.  = theta / delta_time 
     Eigen::Vector3d est_angleAxis; // estimated anglar anxis from t1->t2.  = theta / delta_time 
     Eigen::Vector3d est_trans_velocity; // estimated anglar anxis from t1->t2, translation velocity, need mul by delta_time
+    
+    Eigen::Matrix<double, 6, 1> last_est_var; // 正则项， 控制est_N_norm的大小
+
 
 // output 
+    string output_dir;
     size_t seq_count;
     fstream est_theta_file, est_velocity_file;
     // fstream est_velocity_file_quat;   // evo

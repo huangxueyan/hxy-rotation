@@ -20,7 +20,7 @@ struct ResidualCostFunction
         const Eigen::Vector3d& points, 
         const double delta_time_early, 
         const Eigen::Matrix3d& K, 
-        ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>* interpolator_early_ptr:
+        ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>* interpolator_early_ptr):
             points_(points), delta_time_early_(delta_time_early), 
             intrisic_(K), interpolator_early_ptr_(interpolator_early_ptr)
     {
@@ -58,25 +58,28 @@ struct ResidualCostFunction
 
 
         // taylor first : points * skew_matrix
-        delta_points_T(0) = -ag[2]*T(points_(1)) + ag[1]*T(points_(2));  
-        delta_points_T(1) =  ag[2]*T(points_(0)) - ag[0]*T(points_(2));
-        delta_points_T(2) = -ag[1]*T(points_(0)) + ag[0]*T(points_(1));
 
-        // {   // first order version 
-            points_early_T(0) = T(points_(0)) + delta_points_T(0)*T(delta_time_early_) ;
-            points_early_T(1) = T(points_(1)) + delta_points_T(1)*T(delta_time_early_) ;
-            points_early_T(2) = T(points_(2)) + delta_points_T(2)*T(delta_time_early_) ;
-        // }
+        {   // first order version 
+            // delta_points_T(0) = -ag[2]*T(points_(1)) + ag[1]*T(points_(2));  
+            // delta_points_T(1) =  ag[2]*T(points_(0)) - ag[0]*T(points_(2));
+            // delta_points_T(2) = -ag[1]*T(points_(0)) + ag[0]*T(points_(1));
+            // points_early_T(0) = T(points_(0)) + delta_points_T(0)*T(delta_time_early_) ;
+            // points_early_T(1) = T(points_(1)) + delta_points_T(1)*T(delta_time_early_) ;
+            // points_early_T(2) = T(points_(2)) + delta_points_T(2)*T(delta_time_early_) ;
+        }
 
         // taylor second : points * skew_matrix * skew_matrix
         {   // second order version
-            // delta_second_points_T(0) = -ag[2]*delta_points_T(1) + ag[1]*delta_points_T(2);
-            // delta_second_points_T(1) =  ag[2]*delta_points_T(0) - ag[0]*delta_points_T(2);
-            // delta_second_points_T(2) = -ag[1]*delta_points_T(0) + ag[0]*delta_points_T(1);
+            delta_points_T(0) = -ag[2]*T(points_(1)) + ag[1]*T(points_(2));  
+            delta_points_T(1) =  ag[2]*T(points_(0)) - ag[0]*T(points_(2));
+            delta_points_T(2) = -ag[1]*T(points_(0)) + ag[0]*T(points_(1));
+            delta_second_points_T(0) = -ag[2]*delta_points_T(1) + ag[1]*delta_points_T(2);
+            delta_second_points_T(1) =  ag[2]*delta_points_T(0) - ag[0]*delta_points_T(2);
+            delta_second_points_T(2) = -ag[1]*delta_points_T(0) + ag[0]*delta_points_T(1);
 
-            // points_early_T(0) = T(points_(0)) + delta_points_T(0)*T(delta_time_early_) + delta_second_points_T(0)*T(0.5*delta_time_early_*delta_time_early_);
-            // points_early_T(1) = T(points_(1)) + delta_points_T(1)*T(delta_time_early_) + delta_second_points_T(1)*T(0.5*delta_time_early_*delta_time_early_);
-            // points_early_T(2) = T(points_(2)) + delta_points_T(2)*T(delta_time_early_) + delta_second_points_T(2)*T(0.5*delta_time_early_*delta_time_early_);
+            points_early_T(0) = T(points_(0)) + delta_points_T(0)*T(delta_time_early_) + delta_second_points_T(0)*T(0.5*delta_time_early_*delta_time_early_);
+            points_early_T(1) = T(points_(1)) + delta_points_T(1)*T(delta_time_early_) + delta_second_points_T(1)*T(0.5*delta_time_early_*delta_time_early_);
+            points_early_T(2) = T(points_(2)) + delta_points_T(2)*T(delta_time_early_) + delta_second_points_T(2)*T(0.5*delta_time_early_*delta_time_early_);
         }
    
         {  // exactly version 
@@ -112,7 +115,7 @@ struct ResidualCostFunction
         const Eigen::Vector3d& points, 
         const double delta_time_early, 
         const Eigen::Matrix3d& K,
-        ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>* interpolator_early_ptr
+        ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>* interpolator_early_ptr)
         {
             return new ceres::AutoDiffCostFunction<ResidualCostFunction,1, 3>(
                 new ResidualCostFunction(points, delta_time_early, K, 
@@ -136,8 +139,11 @@ struct ResidualCostFunction
   \param [ts_start, ts_end]: time_range to form timesurface template  
   \param sample_num: the sample count beyond the time_range  
 */
-void System::EstimateMotion_ransca_ceres(double ts_start, double ts_end, int sample_num, int total_iter_num)
+void System::EstimateMotion_ransca_ceres()
 {
+    double ts_start = yaml_ts_start, ts_end = yaml_ts_end;
+    int sample_num = yaml_sample_count, total_iter_num = yaml_iter_num;
+
     cout <<seq_count<< " time "<< eventBundle.first_tstamp.toSec() <<  ", total "
             << eventBundle.size << ", duration " << (eventBundle.last_tstamp - eventBundle.first_tstamp).toSec() 
             << ", sample " << sample_num << ", ts_start " << ts_start<<"~"<< ts_end << ", iter " << total_iter_num <<endl;
@@ -260,7 +266,7 @@ void System::EstimateMotion_ransca_ceres(double ts_start, double ts_end, int sam
 
         ceres::Solver::Options options;
         options.minimizer_progress_to_stdout = false;
-        options.num_threads = 2;
+        options.num_threads = yaml_ceres_iter_thread;
         // options.logging_type = ceres::SILENT;
         options.linear_solver_type = ceres::SPARSE_SCHUR;
         options.use_nonmonotonic_steps = true;
@@ -296,8 +302,8 @@ void System::EstimateMotion_ransca_ceres(double ts_start, double ts_end, int sam
                 angleAxis[1] = est_angleAxis(2);  
             }
             
-            cout << "using " << angleAxis[0] << "," << angleAxis[1] << "," << angleAxis[2] 
-            << ", residual size " << residual_vec.size() << ", sum_0: "<<  residual_sum_0 << ", sum_old: " <<residual_sum_old << endl; 
+            // cout << "using " << angleAxis[0] << "," << angleAxis[1] << "," << angleAxis[2] 
+            // << ", residual size " << residual_vec.size() << ", sum_0: "<<  residual_sum_0 << ", sum_old: " <<residual_sum_old << endl; 
         }
 
 
@@ -373,7 +379,7 @@ void System::EstimateMotion_ransca_ceres(double ts_start, double ts_end, int sam
     }
 
     est_angleAxis = Eigen::Vector3d(angleAxis[0],angleAxis[1],angleAxis[2]);
-    cout << "Loss: " << 0 << ", est_angleAxis " << est_angleAxis.transpose() << endl;
+    // cout << "Loss: " << 0 << ", est_angleAxis " << est_angleAxis.transpose() << endl;
 
 }
 

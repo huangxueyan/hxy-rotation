@@ -117,12 +117,11 @@ public:
         ang_vel_hat_sqr_mul_x.row(1) =  ag_z*ang_vel_hat_mul_x.row(0)- ag_x*ang_vel_hat_mul_x.row(2);
         ang_vel_hat_sqr_mul_x.row(2) = -ag_y*ang_vel_hat_mul_x.row(0)+ ag_x*ang_vel_hat_mul_x.row(1);
 
-        Eigen::Matrix<double,3,-1> new_coord_3d = _coord_3d
-                                        + Eigen::Matrix<double,3,-1>
-                                        (   ang_vel_hat_mul_x.array().rowwise() 
-                                            * (-_delta_time.transpose().array())
-                                            + ang_vel_hat_sqr_mul_x.array().rowwise() 
-                                            * (0.5f * _delta_time.transpose().array().square()) );
+        Eigen::Matrix<double,3,-1> new_coord_3d = _coord_3d + 
+                                           (ang_vel_hat_mul_x.array().rowwise() 
+                                            * (-_delta_time.transpose().array())).matrix();
+                                            // + ang_vel_hat_sqr_mul_x.array().rowwise() 
+                                            // * (0.5f * _delta_time.transpose().array().square()) ;
         // project and store in a image 
         Eigen::Matrix<double,2,-1> new_coord_2d; new_coord_2d.resize(2,_coord_3d.cols());
         new_coord_2d.row(0) = new_coord_3d.row(0).array() / new_coord_3d.row(2).array() * _intrisic(0,0) + _intrisic(0,2);
@@ -139,14 +138,17 @@ public:
             // TODO add gaussian 
             int x = int(new_coord_2d(0,i)), y = int(new_coord_2d(1,i));
 
-            if(x >= 240 || x < 0 || y >= 180 || y < 0)
+            if(x >= 239 || x < 1 || y >= 179 || y < 1)
             {
                 // cout <<" overflow x, y" << x <<"," << y << endl;
                 continue;
             }
 
             vec_valid.push_back(i);
-            image.at<float>(y,x) += 1;  // TODO should be gaussian
+            image.at<float>(y,  x)   += (1 - (new_coord_2d(0,i) - x)) * (1-(new_coord_2d(1,i) - y));  
+            image.at<float>(y+1,x)   += (1 - (new_coord_2d(0,i) - x)) * (new_coord_2d(1,i) - y); 
+            image.at<float>(y,  x+1) += (new_coord_2d(0,i) - x) * (1-(new_coord_2d(1,i) - y)); 
+            image.at<float>(y+1,x+1) += (new_coord_2d(0,i) - x) * (new_coord_2d(1,i) - y);  
         }
 
         // calculate residual 
@@ -156,27 +158,32 @@ public:
 
         // float event_norm =  1.0/255;
         // image *= event_norm;  // normalized. 
-        residuals[0] = 50000 - cv::norm(image)*cv::norm(image);
+        cv::Mat blur_image;
+        cv::GaussianBlur(image, blur_image, cv::Size(5, 5), 1);
+
+        residuals[0] = cv::norm(image)*cv::norm(image);
+        // residuals[0] = 50000 - cv::norm(image)*cv::norm(image);
+        cout << "loss " << residuals[0]  <<", angle "<< ag_x << "," << ag_y << "," << ag_z << endl; 
 
         // save imaeg 
         cv::Mat image_write;
         cv::normalize(image, image_write, 0,255, cv::NORM_MINMAX, CV_8U);
         // cv::threshold(image_write, image_write, 0.3, 255, cv::THRESH_BINARY);
-        std::string time = std::to_string(ros::Time::now().toSec());
+        // std::string time = std::to_string(ros::Time::now().toSec());
         // cv::imwrite("/home/hxt/Desktop/hxy-rotation/data/optimize/"+time+".png", image_write);
         cv::imshow("optimizeing ", image_write);
         cv::waitKey(100);
-        cout << "time " << time +", loss " << residuals[0]  <<", angle "<< ag_x << "," << ag_y << "," << ag_z << endl; 
 
 
         // calculate gradient 
         if (jacobians == NULL || jacobians[0] == NULL)
             return true;
 
-        cv::Mat truncated_image, blur_image, Ix, Iy; 
-        int threshold = 10; 
-        cv::threshold(image, truncated_image, threshold, 255, cv::THRESH_TRUNC); 
-        cv::GaussianBlur(truncated_image, blur_image, cv::Size(5, 5), 1);
+        // cv::Mat truncated_image, blur_image, Ix, Iy; 
+        // int threshold = 10; 
+        // cv::threshold(image, truncated_image, threshold, 255, cv::THRESH_TRUNC); 
+        // cv::GaussianBlur(truncated_image, blur_image, cv::Size(5, 5), 1);
+        cv::Mat Ix, Iy; 
         cv::Sobel(blur_image, Ix, CV_32FC1, 1, 0);
         cv::Sobel(blur_image, Iy, CV_32FC1, 0, 1);
 

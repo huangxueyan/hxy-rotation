@@ -24,13 +24,42 @@ System::System(const string& yaml)
     yaml_denoise_num = fSettings["yaml_denoise_num"];
     yaml_default_value_factor = fSettings["yaml_default_value_factor"];
     yaml_ceres_iter_thread = fSettings["yaml_ceres_iter_thread"];
+    yaml_ros_starttime = fSettings["yaml_ros_starttime"];
+    
 
 
-    // undistore data 
-    undist_mesh_x, undist_mesh_y;  
-    cv::initUndistortRectifyMap(camera.cameraMatrix, camera.distCoeffs, 
-                cv::Mat::eye(3,3,CV_32FC1), camera.cameraMatrix, cv::Size(camera.width, camera.height), 
-                CV_32FC1, undist_mesh_x, undist_mesh_y);
+    // undistore data for map 
+    // cv::initUndistortRectifyMap(camera.cameraMatrix, camera.distCoeffs, 
+    //             cv::Mat::eye(3,3,CV_32FC1), camera.cameraMatrix, cv::Size(camera.width, camera.height), 
+    //             CV_32FC1, undist_mesh_x, undist_mesh_y);
+
+    { // init undistort map for events 
+        std::vector<cv::Point2f> distort_points(camera.width*camera.height), undistort_points;
+
+        for (int y = 0; y < camera.height; ++y)
+        {
+            const int yy = y * camera.width;
+            for (int x = 0; x < camera.width; ++x)
+            {
+                distort_points[yy + x] = cv::Point2f(x, y);
+            }
+        }
+
+        cv::undistortPoints(distort_points, undistort_points, 
+                camera.cameraMatrix, camera.distCoeffs, cv::noArray(), camera.cameraMatrix); 
+        
+        undist_mesh_x = cv::Mat(camera.height, camera.width, CV_32FC1, cv::Scalar(0));
+        undist_mesh_y = cv::Mat(camera.height, camera.width, CV_32FC1, cv::Scalar(0));
+        for (int y = 0; y < camera.height; ++y)
+        {
+            const int yy = y * camera.width;
+            for (int x = 0; x < camera.width; ++x)
+            {
+                undist_mesh_x.at<float>(y, x) = undistort_points[yy + x].x;
+                undist_mesh_y.at<float>(y, x) = undistort_points[yy + x].y;
+            }
+        }
+    }
 
     using_gt = false;
     vec_vec_eventData_iter = 0;
@@ -98,6 +127,14 @@ System::System(const string& yaml)
     // thread_view = new thread(&System::visualize, this);
     // thread_run = new thread(&System::Run, this);
 
+    est_angleAxis = Eigen::Vector3d(0.01,0.01,0.01);       // estimated anglar anxis from t2->t1.  = theta / delta_time 
+    last_est_var << 0.01,0.01,0.01;
+
+    total_evaluate_time = 0;
+    total_visual_time = 0;
+    total_undistort_time = 0;
+
+    // cout << "COUNT " << seq_count <<", last est " << last_est_var << endl;
 
 }
 
@@ -123,30 +160,42 @@ void System::undistortEvents()
     // cout << "------unditort events num:" << point_size <<  endl;
     // cout << "------undisotrt eventBundle cols " << eventBundle.coord.rows() << "," << eventBundle.coord.cols()  <<  endl;
     
-    vector<cv::Point2f> raw_event_points(point_size), undis_event_points(point_size);
 
-    #pragma omp parallel for   
-    for(size_t i=0; i<point_size; ++i)
-        raw_event_points[i] = cv::Point2f(eventBundle.coord(0,i),eventBundle.coord(1,i));
-    
-    // gt data using gt
-        cv::undistortPoints(raw_event_points, undis_event_points, 
-                camera.cameraMatrix, camera.distCoeffs, cv::noArray(), camera.cameraMatrix);
-        
-        // (0,0,0,0)
-        // cv::Mat undis = (cv::Mat_<double>(1,4) << 0, 0, 0 ,0 );
+
+    // ros::Time t1 = ros::Time::now(), t2, t3; 
+    {   // time costy 
+        // vector<cv::Point2f> raw_event_points(point_size), undis_event_points(point_size);
+        // for(size_t i=0; i<point_size; ++i)
+        //     raw_event_points[i] = cv::Point2f(eventBundle.coord(0,i),eventBundle.coord(1,i));
         // cv::undistortPoints(raw_event_points, undis_event_points, 
-        //         camera.cameraMatrix,undis , cv::noArray(), camera.cameraMatrix);
-    
-    
-    // convert points to cv_mat 
-    cv::Mat temp_mat = cv::Mat(undis_event_points); 
-    temp_mat = temp_mat.reshape(1,point_size); // channel 1, row = 2
-    cv::transpose(temp_mat, temp_mat);
-    
-    // convert cv2eigen 
-    event_undis_Bundle.CopySize(eventBundle); 
-    cv::cv2eigen(temp_mat, event_undis_Bundle.coord); 
+        //         camera.cameraMatrix, camera.distCoeffs, cv::noArray(), camera.cameraMatrix);        
+        // // convert points to cv_mat 
+        // cv::Mat temp_mat = cv::Mat(undis_event_points); 
+        // temp_mat = temp_mat.reshape(1,point_size); // channel 1, row = 2
+        // cv::transpose(temp_mat, temp_mat);
+        
+        // // convert cv2eigen 
+        // event_undis_Bundle.CopySize(eventBundle); 
+        // cv::cv2eigen(temp_mat, event_undis_Bundle.coord); 
+        // cout << "undist 1 \n" << event_undis_Bundle.coord.topLeftCorner(2,5) <<endl;
+    }   
+    // t2 = ros::Time::now(); 
+    {
+        event_undis_Bundle.CopySize(eventBundle); 
+        for(size_t i=0; i<point_size; ++i)
+        {
+            int x = int(eventBundle.coord(0,i)), y = int(eventBundle.coord(1,i));
+            event_undis_Bundle.coord(0,i) = undist_mesh_x.at<float>(y, x);
+            event_undis_Bundle.coord(1,i) = undist_mesh_y.at<float>(y, x);
+
+            // if(i<5)
+            //     cout << "undist 2 " << undist_mesh_x.at<float>(y, x) << "," << undist_mesh_y.at<float>(y, x) <<endl;
+        }
+
+    }
+    // t3 = ros::Time::now(); 
+    // cout <<"undistor 1 " << (t2-t1).toSec() <<" undistort2 " << (t3-t2).toSec()<< endl;
+
     
     // store 3d data
     event_undis_Bundle.InverseProjection(camera.eg_cameraMatrix); 
@@ -193,6 +242,7 @@ cv::Mat System::getImageFromBundle(EventBundle& cur_event_bundle, const PlotOpti
         image = cv::Mat(height,width, CV_16UC3);
         image = cv::Scalar(0,0,0); // clear first 
         
+        #pragma omp parallel for 
         for(int i = cur_event_bundle.coord.cols()-1; i>0; i--)
         // for(int i=0; i<cur_event_bundle.coord.cols(); i++)
         {
@@ -392,7 +442,7 @@ void System::Run()
 
     // check current eventsize or event interval 
     double time_interval = (eventBundle.last_tstamp-eventBundle.first_tstamp).toSec();
-    if(time_interval < 0.002 || eventBundle.size < 3000)
+    if(time_interval < 0.002 || eventBundle.size < 4000)
     {
         cout << "no enough interval or num: " <<time_interval << ", "<< eventBundle.size << endl;
         return; 
@@ -408,7 +458,8 @@ void System::Run()
     t1 = ros::Time::now();
         undistortEvents();
     t2 = ros::Time::now();
-    cout << "undistortEvents time" << (t2-t1).toSec() << endl;  // 0.00691187 s
+    total_undistort_time += (t2-t1).toSec();
+    // cout << "undistortEvents time " <<total_undistort_time<< ", " << (t2-t1).toSec() << endl;  // 0.00691187 s
 
     /* get local bundle sharper using self derived iteration CM method */ 
     // est_angleAxis = Eigen::Vector3d(2.0840802, 2.6272788, 4.7796245); // set to 0. 
@@ -435,12 +486,22 @@ void System::Run()
     // est_angleAxis = Eigen::Vector3d(1.576866857643363, 1.7536166842524228, -1.677515728118435); // set to gt. 
     
     t1 = ros::Time::now();
-    EstimateMotion_ransca_ceres(yaml_ts_start, yaml_ts_end, yaml_sample_count, yaml_iter_num);
-    // EstimateMotion_ransca_samples_ceres(0.2, 1);
-    t2 = ros::Time::now();
-    cout << "iter time " << (t2-t1).toSec() << endl;  // 0.00691187 s
-    cout << "-----------------------" << endl;
+    // EstimateMotion_kim();          // CMax - kim
+    // EstimateMotion_CM_ceres();        // CMax - ceres 
+    // EstimateMotion_PPP_ceres(); // ST-PPP
+    // EstimateMotion_ransca_ceres(); // ours with double and single 
+    EstimateMotion_ransca_ceres_RT(); // ours with double and single 
 
+
+    // EstimateRunTime_CM();
+    // EstimateRunTime_PPP();
+    // EstimateRunTime_Single();
+    // EstimateRunTime_Double();
+    t2 = ros::Time::now();
+    cout << seq_count << " one batch time " << (t2-t1).toSec() << endl;  // 0.00691187 s
+    cout << "-----------------------" << endl;
+    
+    total_evaluate_time += (t2-t1).toSec(); 
 
 
     // save gt date 
@@ -450,7 +511,11 @@ void System::Run()
     // getMapImage();
 
     // visualize 
+    t1 = ros::Time::now();
     visualize(); 
+    t2 = ros::Time::now();
+
+    total_visual_time += (t2-t1).toSec(); 
 
     // clear event bundle 
     // que_vec_eventData.pop();
@@ -477,7 +542,10 @@ void System::save_velocity()
     // WARNING, you should use ros timestamps not double (cout for double is 6 valid numbers)
     // est_velocity_file << seq_count++ <<" " << eventBundle.first_tstamp << " " << eventBundle.last_tstamp << " " << euler_position.transpose() << endl;
     
-    est_velocity_file << seq_count++ <<" " << eventBundle.first_tstamp << " " << eventBundle.last_tstamp << " " << est_angleAxis.transpose() << endl;
+    // est_velocity_file << seq_count++ <<" " << eventBundle.first_tstamp << " " << eventBundle.last_tstamp << " " << est_angleAxis.transpose() << endl;
+    est_velocity_file << seq_count++ <<" " 
+        << eventBundle.first_tstamp.toSec() - yaml_ros_starttime << " " 
+        << eventBundle.last_tstamp.toSec() - yaml_ros_starttime << " " << est_angleAxis.transpose() << endl;
 
 }
 
@@ -603,7 +671,7 @@ void System::visualize()
         // cv::imshow("curr_map_image", curr_map_image);
         // cv::imshow("hot_image_C3", hot_image_C3);
 
-        cv::waitKey(10);
+        cv::waitKey(1);
 }
 
 

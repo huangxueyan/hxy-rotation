@@ -108,10 +108,13 @@ public:
 // visualize 
     void visualize();
 
+    double total_evaluate_time;
+
     // bool inline checkEmpty(){return que_vec_eventData.empty();}
 
 // file 
     bool inline file_opened() {return est_velocity_file.is_open();};
+
 
 // thread
     // thread* thread_run;
@@ -132,6 +135,7 @@ private:
     int yaml_denoise_num;
     float yaml_default_value_factor; 
     float yaml_regulization_factor;
+    int yaml_ceres_iter_thread;
 // motion 
     vector<double> vec_curr_time;
     vector<Eigen::Vector3d> vec_angular_velocity;

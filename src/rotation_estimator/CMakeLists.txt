@@ -22,6 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(OpenCV 4 REQUIRED)
 find_package(Sophus REQUIRED )
 find_package(Ceres REQUIRED )
+find_package(Eigen3 3.3 REQUIRED PATH /usr/local )
 
 
 find_package(OpenMP)
@@ -162,16 +163,19 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME}_node 
         src/rotation_estimator_node.cpp 
-        src/callbacks.cpp
+        # src/callbacks.cpp
         src/database.cpp
         src/system.cpp
         src/numerics.cpp
         src/system_estimate.cpp                 # store utils for motion estimation  
         # src/system_estimate_ransca.cpp          # ransac method with self defined gradient function, RMSPros
         # src/system_estimate_CM_ceres.cpp
+        # src/system_estimate_PPP_ceres.cpp
         # src/system_estimate_ransac_doublewarp_ceres.cpp  # timesurface method with double warp using ceres
         # src/system_estimate_ransac_singlewarp_ceres.cpp  # timesurface method with double warp using ceres
-        src/system_estimate_ransac_ceres_one.cpp       # one loss of ceres
+        src/system_estimate_ransac_singlewarp_ceres_RT.cpp  # timesurface method with double warp using ceres
+        # src/system_estimate_ransac_ceres_one.cpp       # one loss of ceres
+        # src/system_evaluate_runtime.cpp
         src/system_estimate_kim.cpp)            # using kim method with self defined gradient function, R
 
 ## Rename C++ executable without prefix
@@ -188,7 +192,7 @@ add_executable(${PROJECT_NAME}_node
 target_link_libraries(${PROJECT_NAME}_node
     ${catkin_LIBRARIES}
     ${OpenCV_LIBS}
-    ${Eigen3_LIBS}
+    ${eigen3_LIBS}
     ${Sophus_LIBRARIES} 
     ${CERES_LIBRARIES}
 )

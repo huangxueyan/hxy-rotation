@@ -15,6 +15,8 @@ cv::Mat System::getWarpedEventImage(const Eigen::Vector3d & cur_ang_vel, EventBu
     // cout << "eventUndistorted.coord.cols() " << event_undis_Bundle.coord.cols() << endl;
     /* warp local events become sharper */
     event_out.CopySize(event_undis_Bundle);
+
+    cout << "using eigen thread " << Eigen::nbThreads() << endl;
     getWarpedEventPoints(event_undis_Bundle, event_out, cur_ang_vel, Eigen::Vector3d::Zero(), -1, ref_t1); 
     event_out.Projection(camera.eg_cameraMatrix);
     event_out.DiscriminateInner(camera.width, camera.height);
@@ -75,7 +77,7 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
             // cout <<"using const delta " << delta_time << endl;
         }
 
-        // first order version  
+        // taylor
             Eigen::Matrix3Xd ang_vel_hat_mul_x, ang_vel_hat_sqr_mul_x;  /** equation 11 of kim */ 
             ang_vel_hat_mul_x.resize(3,eventIn.size);     // row, col 
             ang_vel_hat_sqr_mul_x.resize(3,eventIn.size); 
@@ -87,19 +89,25 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
             ang_vel_hat_sqr_mul_x.row(1) =  cur_ang_vel(2)*ang_vel_hat_mul_x.row(0) - cur_ang_vel(0)*ang_vel_hat_mul_x.row(2);
             ang_vel_hat_sqr_mul_x.row(2) = -cur_ang_vel(1)*ang_vel_hat_mul_x.row(0) + cur_ang_vel(0)*ang_vel_hat_mul_x.row(1);
 
-            eventOut.coord_3d = eventIn.coord_3d
-                                        + Eigen::MatrixXd( 
-                                            ang_vel_hat_mul_x.array().rowwise() 
-                                            * (vec_delta_time.transpose().array()));
+            // first order version 
+            {
+                // eventOut.coord_3d = eventIn.coord_3d
+                //                             + Eigen::MatrixXd( 
+                //                                 ang_vel_hat_mul_x.array().rowwise() 
+                //                                 * (vec_delta_time.transpose().array()));
+            }
                 
 
-        // kim second order version;
-            // eventOut.coord_3d = eventIn.coord_3d
-            //                             + Eigen::MatrixXd( 
-            //                                 ang_vel_hat_mul_x.array().rowwise() 
-            //                                 * (vec_delta_time.transpose().array())
-            //                                 + ang_vel_hat_sqr_mul_x.array().rowwise() 
-            //                                 * (0.5f * vec_delta_time.transpose().array().square()) );
+            // kim second order version;
+            {
+                eventOut.coord_3d = eventIn.coord_3d
+                                            + Eigen::MatrixXd( 
+                                                ang_vel_hat_mul_x.array().rowwise() 
+                                                * (vec_delta_time.transpose().array())
+                                                + ang_vel_hat_sqr_mul_x.array().rowwise() 
+                                                * (0.5f * vec_delta_time.transpose().array().square()) );
+            }
+
         // cout << "usingg est" << cur_ang_vel.transpose() << endl;
         // cout << "original  " << eventIn.coord_3d.topLeftCorner(3,5)<< endl;
         // cout << "ang_vel_hat_mul_x " << ang_vel_hat_mul_x.topLeftCorner(3,5)<< endl;

@@ -76,8 +76,16 @@ public:
 
     void EstimateMotion_kim();  
     void EstimateMotion_CM_ceres();
-    void EstimateMotion_ransca_ceres(double ts_start, double ts_end, int sample_num, int total_iter_num);
+    void EstimateMotion_PPP_ceres();
+    void EstimateMotion_ransca_ceres();
+    void EstimateMotion_ransca_ceres_RT();
     void EstimateMotion_KS_ceres();
+
+    void EstimateRunTime_CM();
+    void EstimateRunTime_PPP();
+    void EstimateRunTime_Single();
+    void EstimateRunTime_Double();
+
     // void EstimateMotion_ransca_once(double sample_ratio, double warp_time_ratio, double opti_steps);
     // void EstimateMotion_ransca_warp2bottom(double sample_start, double sample_end, double opti_steps);
 
@@ -104,6 +112,9 @@ public:
 // file 
     bool inline file_opened() {return est_velocity_file.is_open();};
 
+    double total_evaluate_time, total_undistort_time, total_visual_time;
+
+
     // bool inline checkEmpty(){return que_vec_eventData.empty();}
 
 // thread
@@ -125,6 +136,7 @@ private:
     int yaml_denoise_num;
     float yaml_default_value_factor; 
     int yaml_ceres_iter_thread;
+    double yaml_ros_starttime;
 // motion 
     vector<double> vec_curr_time;
     vector<Eigen::Vector3d> vec_angular_velocity;
@@ -183,6 +195,8 @@ private:
     // 逻辑是t2-t1->t0. 如eq(3)所示
     Eigen::Vector3d gt_angleAxis ; // gt anglar anxis from t2->t1,.  = theta / delta_time 
     Eigen::Vector3d est_angleAxis; // estimated anglar anxis from t2->t1.  = theta / delta_time 
+
+    Eigen::Vector3d last_est_var; // 正则项， 控制est_N_norm的大小
 
 // output 
     size_t seq_count;

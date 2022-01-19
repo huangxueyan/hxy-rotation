@@ -105,13 +105,15 @@ struct ResidualCostFunction
   \param [ts_start, ts_end]: time_range to form timesurface template  
   \param sample_num: the sample count beyond the time_range  
 */
-void System::EstimateMotion_ransca_ceres(double ts_start, double ts_end, int sample_num, int total_iter_num)
+void System::EstimateMotion_ransca_ceres()
 {
+    double ts_start = yaml_ts_start, ts_end = yaml_ts_end;
+    int sample_num = yaml_sample_count, total_iter_num = yaml_iter_num;
     cout <<seq_count<< " time "<< eventBundle.first_tstamp.toSec() <<  ", total "
             << eventBundle.size << ", duration " << (eventBundle.last_tstamp - eventBundle.first_tstamp).toSec() 
             << ", sample " << sample_num << ", ts_start " << ts_start<<"~"<< ts_end << ", iter " << total_iter_num <<endl;
 
-    bool show_time_info = false;
+    bool show_time_info = true;
     // measure time 
     ros::Time t1, t2; 
 
@@ -318,7 +320,7 @@ void System::EstimateMotion_ransca_ceres(double ts_start, double ts_end, int sam
     }
 
     est_angleAxis = Eigen::Vector3d(angleAxis[0],angleAxis[1],angleAxis[2]);
-    cout << "Loss: " << 0 << ", est_angleAxis " << est_angleAxis.transpose() << endl;
+    // cout << "Loss: " << 0 << ", est_angleAxis " << est_angleAxis.transpose() << endl;
 
 
 

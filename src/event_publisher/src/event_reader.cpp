@@ -107,13 +107,12 @@ bool Event_reader::acquire(dvs_msgs::EventArrayPtr ptr)
     if(using_fixed_time==0)
     {
         target_size = event_bundle_size;    
-        cout << "using fixed size " << event_bundle_size << endl;
+        // cout << "using fixed size " << event_bundle_size << endl;
     }
     else
     {
         target_interval = fixed_interval;
         cout << "using fixed time " << fixed_interval << endl;
-
     }
 
     dvs_msgs::Event msg;
@@ -173,13 +172,12 @@ bool Event_reader::acquire(dvs_msgs::EventArrayPtr ptr, std::vector<double>& vec
     if(using_fixed_time==0)
     {
         target_size = event_bundle_size;    
-        cout << "using fixed size " << event_bundle_size << endl;
+        // cout << "using fixed size " << event_bundle_size << endl;
     }
     else
     {
         target_interval = fixed_interval;
         cout << "using fixed time " << fixed_interval << endl;
-
     }
 
     dvs_msgs::Event msg;

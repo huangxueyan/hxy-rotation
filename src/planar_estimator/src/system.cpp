@@ -19,6 +19,7 @@ System::System(const string& yaml)
     yaml_ts_end = fSettings["yaml_ts_end"];
     yaml_sample_count = fSettings["yaml_sample_count"];
     yaml_ceres_iter_num = fSettings["yaml_ceres_iter_num"];
+    yaml_ceres_iter_thread = fSettings["yaml_ceres_iter_thread"];
     yaml_gaussian_size = fSettings["yaml_gaussian_size"];
     yaml_gaussian_size_sigma = fSettings["yaml_gaussian_size_sigma"];
     yaml_denoise_num = fSettings["yaml_denoise_num"];
@@ -34,6 +35,9 @@ System::System(const string& yaml)
     using_gt = false;
     vec_vec_eventData_iter = 0;
     seq_count = 1;
+
+    total_evaluate_time = 0;
+
 
     // ros msg 
     // vec_last_event_idx = 0;
@@ -411,7 +415,7 @@ void System::Run()
     ros::Time t1 = ros::Time::now();  // TODO undistort 
     undistortEvents();
     ros::Time t2 = ros::Time::now();
-    cout << "undistort time " << (t2-t1).toSec() << endl;  // 0.00691187 s
+    // cout << "undistort time " << (t2-t1).toSec() << endl;  // 0.00691187 s
 
     /* get local bundle sharper using self derived iteration CM method */ 
     // est_angleAxis = Eigen::Vector3d(2.0840802, 2.6272788, 4.7796245); // set to 0. 
@@ -441,9 +445,9 @@ void System::Run()
     EstimateMotion_ransca_doublewarp_ceres(yaml_ts_start, yaml_ts_end, yaml_sample_count, yaml_iter_num);
     // EstimateMotion_ransca_samples_ceres(0.2, 1);
     t2 = ros::Time::now();
-    cout << "iter time " << (t2-t1).toSec() << endl;  // 0.00691187 s
+    cout << "   batch time " << (t2-t1).toSec() << endl;  // 0.00691187 s
     cout << "-----------------------" << endl;
-
+    total_evaluate_time += (t2-t1).toSec();
 
 
     // save gt date 

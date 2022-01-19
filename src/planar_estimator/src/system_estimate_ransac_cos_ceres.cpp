@@ -398,7 +398,7 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_e
         ceres::Solve(options, &problem, &summary);
         t2 = ros::Time::now();
         if(show_time_info)
-            cout << "ceres time " << (t2-t1).toSec() << endl;  // 0.00383356 
+            cout << "   ceres time " << (t2-t1).toSec() << endl;  // 0.00383356 
         
         // cout << summary.BriefReport() << endl;
 

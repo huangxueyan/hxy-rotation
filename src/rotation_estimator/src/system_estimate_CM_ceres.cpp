@@ -24,6 +24,7 @@ struct ContrastCostFunction
        
     }
 
+
     // operator 
     template<typename T> 
     bool operator()(const T* ag, T* residual) const
@@ -55,9 +56,9 @@ struct ContrastCostFunction
         delta_second_points_T.row(2) = -ag[1]*delta_points_T.row(0) + ag[0]*delta_points_T.row(1);
 
 
-        warped_3D_T.row(0) = coord_3d_T.row(0).array() - delta_points_T.row(0).array()*delta_time_T.transpose().array(); // + delta_second_points_T(0)*T(0.5*delta_time_*delta_time_);
-        warped_3D_T.row(1) = coord_3d_T.row(1).array() - delta_points_T.row(1).array()*delta_time_T.transpose().array(); // + delta_second_points_T(1)*T(0.5*delta_time_*delta_time_);
-        warped_3D_T.row(2) = coord_3d_T.row(2).array() - delta_points_T.row(2).array()*delta_time_T.transpose().array(); // + delta_second_points_T(2)*T(0.5*delta_time_*delta_time_);
+        warped_3D_T.row(0) = coord_3d_T.row(0).array() - delta_points_T.row(0).array()*delta_time_T.transpose().array();// + delta_second_points_T.row(0).array()*0.5*delta_time_T.transpose().array()*delta_time_T.transpose().array();
+        warped_3D_T.row(1) = coord_3d_T.row(1).array() - delta_points_T.row(1).array()*delta_time_T.transpose().array();// + delta_second_points_T.row(1).array()*0.5*delta_time_T.transpose().array()*delta_time_T.transpose().array();
+        warped_3D_T.row(2) = coord_3d_T.row(2).array() - delta_points_T.row(2).array()*delta_time_T.transpose().array();// + delta_second_points_T.row(2).array()*0.5*delta_time_T.transpose().array()*delta_time_T.transpose().array();
         
         // cout << "coord_3d_T " << coord_3d_T.topLeftCorner(3,5) << endl;
         // cout << "delta_points_T  " << delta_points_T.topLeftCorner(3,5) << endl;
@@ -104,6 +105,34 @@ struct ContrastCostFunction
             warpped_images(y_int+1, x_int+1) += dx*dy;
         }
 
+        // gaussian_blur(warpped_images);
+        {
+            int templates[25] = { 1, 4, 7, 4, 1,   
+                                4, 16, 26, 16, 4,   
+                                7, 26, 41, 26, 7,  
+                                4, 16, 26, 16, 4,   
+                                1, 4, 7, 4, 1 };        
+            int height = 180, width = 240;
+            for (int j=2;j<height-2;j++)  
+            {  
+                for (int i=2;i<width-2;i++)  
+                {  
+                    T sum = T(0);  
+                    int index = 0;  
+                    for ( int m=j-2; m<j+3; m++)  
+                    {  
+                        for (int n=i-2; n<i+3; n++)  
+                        {  
+                            sum +=  warpped_images(m, n) * T(templates[index++]) ;  
+                        }  
+                    }  
+                    sum /= T(273);  
+                    if (sum > T(255))  
+                        sum = T(255);  
+                    warpped_images(j, i) = sum;  
+                }  
+            }  
+        }
 
         Eigen::Map<Eigen::Matrix<T, 1, -1>> warpped_images_vec(warpped_images.data(), 1, 180*240);
         Eigen::Matrix<T, 1, -1> warpped_images_vec_submean = warpped_images_vec.array() - warpped_images_vec.mean();
@@ -113,12 +142,13 @@ struct ContrastCostFunction
         residual[0] += T(10);
 
         // cout << "cols " << warpped_images_vec_submean.cols() << endl;
-        cout << "mean " << warpped_images_vec.mean() << endl;
-        cout << "multi " << warpped_images_vec * warpped_images_vec.transpose() << endl;
-        cout << "residual " << residual[0] << ", ag " <<ag[0] << ", "<< ag[1] << ", " <<ag[2] << endl;
+        // cout << "mean " << warpped_images_vec.mean() << endl;
+        // cout << "multi " << warpped_images_vec * warpped_images_vec.transpose() << endl;
+        // cout << "residual " << residual[0] << ", ag " <<ag[0] << ", "<< ag[1] << ", " <<ag[2] << endl;
 
         return true;
     }
+
 
     // make ceres costfunction 
     static ceres::CostFunction* Create(
@@ -267,7 +297,7 @@ void System::EstimateMotion_CM_ceres()
     double residuals; 
     // est_angleAxis = Eigen::Vector3d::Zero();
     double angleAxis[3] = {est_angleAxis(0), est_angleAxis(1), est_angleAxis(2)}; 
-    // double angleAxis[3] = {2.1399965, 2.4666412, 2.8370314}; 
+    // double angleAxis[3] = {0.01, 0.01, 0.01}; 
        
     // init problem 
     ceres::Problem problem; 
@@ -317,22 +347,19 @@ void System::EstimateMotion_CM_ceres()
                                                 camera.eg_cameraMatrix);
         problem.AddResidualBlock(cost_function, nullptr, &angleAxis[0]);
         ceres::Solver::Options options;
-        options.minimizer_progress_to_stdout = true;
-        options.num_threads = 1;
-        options.update_state_every_iteration = true;
-        options.initial_trust_region_radius = 0.1;
-        options.max_trust_region_radius = 0.1;
+        options.minimizer_progress_to_stdout = false;
+        options.num_threads = yaml_ceres_iter_thread;
+        // options.update_state_every_iteration = true;
+        // options.initial_trust_region_radius = 0.1;
+        // options.max_trust_region_radius = 0.1;
 
         // options.logging_type = ceres::SILENT;
         options.linear_solver_type = ceres::SPARSE_SCHUR;
         options.use_nonmonotonic_steps = false;
-        options.max_num_iterations = 10;
+        options.max_num_iterations = yaml_ceres_iter_num;
         // options.initial_trust_region_radius = 1;
         ceres::Solver::Summary summary; 
-        ceres::Solve(options, &problem, &summary);
-        cout << summary.BriefReport() << endl;
 
-    
     problem.SetParameterLowerBound(&angleAxis[0],0,-20);
     problem.SetParameterUpperBound(&angleAxis[0],0,20);
     problem.SetParameterLowerBound(&angleAxis[0],1,-20);
@@ -340,6 +367,8 @@ void System::EstimateMotion_CM_ceres()
     problem.SetParameterLowerBound(&angleAxis[0],2,-20);
     problem.SetParameterUpperBound(&angleAxis[0],2,20);
 
+        ceres::Solve(options, &problem, &summary);
+        cout << summary.BriefReport() << endl;
 
     // cout << "   iter " << iter_ << ", ceres iters " << summary.iterations.size()<< endl;
     // if(summary.BriefReport().find("NO_CONVERGENCE") != std::string::npos)
@@ -350,7 +379,9 @@ void System::EstimateMotion_CM_ceres()
     
 
     est_angleAxis = Eigen::Vector3d(angleAxis[0],angleAxis[1],angleAxis[2]);
-    cout << "Loss: " << 0 << ", est_angleAxis " <<est_angleAxis.transpose() << endl;
+    // cout << "Loss: " << 0 << ", est_angleAxis " <<est_angleAxis.transpose() << endl;
+
+    getWarpedEventImage(-est_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3); 
 
 }
 
