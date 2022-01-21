@@ -9,41 +9,28 @@ using namespace std;
 /**
 * \brief given angular veloity(t1->t2), warp local event bundle become shaper
 */
-cv::Mat System::getWarpedEventImage(const Eigen::Vector3d & cur_ang_vel, EventBundle& event_out,  const PlotOption& option, bool ref_t1)
+cv::Mat System::getWarpedEventImage(const Eigen::Vector3d & cur_ang_vel, EventBundle& event_out,  const PlotOption& option, bool ref_t1, float timerange)
 {
     // cout << "get warpped event image " << endl;
     // cout << "eventUndistorted.coord.cols() " << event_undis_Bundle.coord.cols() << endl;
     /* warp local events become sharper */
+    ros::Time t1, t2, t3;
+
     event_out.CopySize(event_undis_Bundle);
+    // t1 = ros::Time::now(); 
 
-    cout << "using eigen thread " << Eigen::nbThreads() << endl;
-    getWarpedEventPoints(event_undis_Bundle, event_out, cur_ang_vel, Eigen::Vector3d::Zero(), -1, ref_t1); 
+    getWarpedEventPoints(event_undis_Bundle, event_out, cur_ang_vel, ref_t1, timerange); 
+    // t2= ros::Time::now(); 
+    
     event_out.Projection(camera.eg_cameraMatrix);
+
     event_out.DiscriminateInner(camera.width, camera.height);
-    // getImageFromBundle(event_out, option, false).convertTo(curr_warpped_event_image, CV_32F);
+    // t3 = ros::Time::now(); 
 
-    return getImageFromBundle(event_out, option, false);
 
-    // testing 
-
-    // getWarpedEventPoints(event_undis_Bundle, event_out, Eigen::Vector3d(0,10,0)); 
-    // event_out.Projection(camera.eg_cameraMatrix);
-    // event_out.DiscriminateInner(camera.width, camera.height);
-    // getImageFromBundle(event_out, option, false).convertTo(y_img, CV_32F);
-    // getWarpedEventPoints(event_undis_Bundle, event_out, Eigen::Vector3d(0,5,0)); 
-    // event_out.Projection(camera.eg_cameraMatrix);
-    // event_out.DiscriminateInner(camera.width, camera.height);
-    // getImageFromBundle(event_out, option, false).convertTo(y5_img, CV_32F);
-
-    // cv::imshow("x ", x_img);
-    // cv::imshow("y ", y_img);
-    // cv::imshow("z ", z_img);
-    // cv::imshow("x 5", x5_img);
-    // cv::imshow("y 5", y5_img);
-    // cv::imshow("z 5", z5_img);
-    // cv::waitKey(0);
-
-    // cout << "  success get warpped event image " << endl;
+    // cout << "   getWarpedEventPoints time " << (t2-t1).toSec() << endl;
+    // cout << "   DiscriminateInner time " << (t3-t2).toSec() << endl;
+    return getImageFromBundle(event_out, option, timerange);
 }
 
 /**
@@ -54,7 +41,7 @@ cv::Mat System::getWarpedEventImage(const Eigen::Vector3d & cur_ang_vel, EventBu
 * \param delta_time all events warp this time, if delta_time<0, warp to t1. 
 */
 void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& eventOut, 
-    const Eigen::Vector3d& cur_ang_vel, const Eigen::Vector3d& cur_ang_pos, double delta_time,  bool ref_t1 )
+    const Eigen::Vector3d& cur_ang_vel,  bool ref_t1, float timerange)
 {
     // cout << "projecting " << endl;
     // the theta of rotation axis
@@ -66,16 +53,11 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
         // cout << "  small angle vec " << ang_vel_norm/3.14 * 180 << " degree /s" << endl;
         eventOut.coord_3d = eventIn.coord_3d ;
     }
-    else
+    else if (timerange > 0.9)
     {   
+        // cout << "using whole warp "  <<endl;
         Eigen::VectorXd vec_delta_time = eventBundle.time_delta;  // positive 
         if(ref_t1) vec_delta_time = eventBundle.time_delta.array() - eventBundle.time_delta(eventBundle.size-1);   // negative 
-
-        if(delta_time > 0)  // using self defined deltime. 
-        {
-            vec_delta_time.setConstant(delta_time);
-            // cout <<"using const delta " << delta_time << endl;
-        }
 
         // taylor
             Eigen::Matrix3Xd ang_vel_hat_mul_x, ang_vel_hat_sqr_mul_x;  /** equation 11 of kim */ 
@@ -131,12 +113,58 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
         // cout << "last \n " << eventOut.coord_3d.bottomRightCorner(3,5) <<  endl;
 
     }
-
-    if(cur_ang_pos.norm()/3.14 * 180 > 0.1) 
+    else  // warp events within given timerange 
     {
-        cout << "  warp to global map " << cur_ang_pos.norm()/3.14 * 180 << " degree /s" << endl;
-        eventOut.coord_3d = SO3(cur_ang_pos) * eventIn.coord_3d;
+        int n_num = int(eventIn.size * timerange);
+        Eigen::VectorXd vec_delta_time = eventBundle.time_delta.topRows(n_num);  // positive 
+        if(ref_t1) vec_delta_time = eventBundle.time_delta.topLeftCorner(1,n_num).array() - eventBundle.time_delta(eventBundle.size-1);   // negative 
+
+
+        // cout << "warp num " << n_num << ", size " << eventOut.coord_3d.topLeftCorner(3,n_num).size() <<  endl;
+
+        // taylor
+            Eigen::Matrix<double, 3, -1> temp_eventIn = eventIn.coord_3d.topLeftCorner(3,n_num);
+            Eigen::Matrix3Xd ang_vel_hat_mul_x, ang_vel_hat_sqr_mul_x;  /** equation 11 of kim */ 
+            ang_vel_hat_mul_x.resize(3, n_num);     // row, col 
+            ang_vel_hat_sqr_mul_x.resize(3, n_num); 
+            ang_vel_hat_mul_x.row(0) = -cur_ang_vel(2)*temp_eventIn.row(1) + cur_ang_vel(1)*temp_eventIn.row(2);
+            ang_vel_hat_mul_x.row(1) =  cur_ang_vel(2)*temp_eventIn.row(0) - cur_ang_vel(0)*temp_eventIn.row(2);
+            ang_vel_hat_mul_x.row(2) = -cur_ang_vel(1)*temp_eventIn.row(0) + cur_ang_vel(0)*temp_eventIn.row(1);
+
+
+        // cout << "vec_delta_time " << vec_delta_time.rows() << endl;
+        // cout << "temp_eventIn " << temp_eventIn.cols() << endl;
+        // cout << "ang_vel_hat_mul_x " << ang_vel_hat_mul_x.cols() << endl;
+
+            // first order version 
+            {
+                eventOut.coord_3d.topLeftCorner(3,n_num) = temp_eventIn
+                                            + Eigen::MatrixXd( 
+                                                ang_vel_hat_mul_x.array().rowwise() 
+                                                * (vec_delta_time.transpose().array()));
+                
+                eventOut.coord_3d.bottomRightCorner(1,eventIn.size-n_num).array() = 1;   // set z axis to 1
+        // cout << "eventOut \n " << eventOut.coord_3d.block(0,1000,3,5) <<  endl;
+
+
+            }
+                
+
+            // kim second order version;
+            // {
+            //     ang_vel_hat_sqr_mul_x.row(0) = -cur_ang_vel(2)*ang_vel_hat_mul_x.row(1) + cur_ang_vel(1)*ang_vel_hat_mul_x.row(2);
+            //     ang_vel_hat_sqr_mul_x.row(1) =  cur_ang_vel(2)*ang_vel_hat_mul_x.row(0) - cur_ang_vel(0)*ang_vel_hat_mul_x.row(2);
+            //     ang_vel_hat_sqr_mul_x.row(2) = -cur_ang_vel(1)*ang_vel_hat_mul_x.row(0) + cur_ang_vel(0)*ang_vel_hat_mul_x.row(1);
+            //     eventOut.coord_3d = eventIn.coord_3d
+            //                                 + Eigen::MatrixXd( 
+            //                                     ang_vel_hat_mul_x.array().rowwise() 
+            //                                     * (vec_delta_time.transpose().array())
+            //                                     + ang_vel_hat_sqr_mul_x.array().rowwise() 
+            //                                     * (0.5f * vec_delta_time.transpose().array().square()) );
+            // }
+
     }
+
     // cout << "sucess getWarpedEventPoints" << endl;
 }
 
@@ -202,7 +230,7 @@ void System::getMapImage()
 
 
     event_Map_Bundle.CopySize(event_warpped_Bundle);
-    getWarpedEventPoints(event_warpped_Bundle,event_Map_Bundle,Eigen::Vector3d(0,0,0),angAxis_b2f.axis()*angAxis_b2f.angle());
+    getWarpedEventPoints(event_warpped_Bundle,event_Map_Bundle, angAxis_b2f.axis()*angAxis_b2f.angle());
     event_Map_Bundle.Projection(camera.eg_MapMatrix);
     event_Map_Bundle.DiscriminateInner(camera.width_map, camera.height_map);
     event_Map_Bundle.angular_position = angAxis_b2f.axis() * angAxis_b2f.angle(); 
@@ -220,7 +248,7 @@ void System::getMapImage()
     for(size_t i=start_idx; i<vec_Bundle_Maps.size(); i++)
     {
         // get 2d image 
-        getImageFromBundle(vec_Bundle_Maps[i], PlotOption::U16C1_EVNET_IMAGE, true).convertTo(temp_img, CV_32F);
+        getImageFromBundle(vec_Bundle_Maps[i], PlotOption::U16C1_EVNET_IMAGE).convertTo(temp_img, CV_32F);
         // cout << "temp_img.size(), " << temp_img.size() << "type " << temp_img.type() << endl;
         
         curr_map_image += temp_img;

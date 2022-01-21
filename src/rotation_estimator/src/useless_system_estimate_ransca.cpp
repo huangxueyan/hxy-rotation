@@ -84,7 +84,7 @@ Eigen::Vector3d System::DeriveTimeErrAnalyticRansac(const Eigen::Vector3d &vel_a
     cout << "using DeriveRansac " << vel_angleAxis.transpose() 
             << " time " << warp_time << endl;
 
-    getWarpedEventPoints(event_undis_Bundle, event_warpped_Bundle, vel_angleAxis, Eigen::Vector3d::Zero(), warp_time);
+    getWarpedEventPoints(event_undis_Bundle, event_warpped_Bundle, vel_angleAxis, warp_time);
     event_warpped_Bundle.Projection(camera.eg_cameraMatrix);
     event_warpped_Bundle.DiscriminateInner(camera.width-4, camera.height-4);
     
@@ -266,7 +266,7 @@ Eigen::Vector3d System::DeriveTimeErrAnalyticRansacBottom(const Eigen::Vector3d 
 
 
     // warp points according to their timestamps
-    getWarpedEventPoints(event_undis_Bundle, event_warpped_Bundle, vel_angleAxis, Eigen::Vector3d::Zero(), -1);
+    getWarpedEventPoints(event_undis_Bundle, event_warpped_Bundle, vel_angleAxis, -1);
     event_warpped_Bundle.Projection(camera.eg_cameraMatrix);
     event_warpped_Bundle.DiscriminateInner(camera.width, camera.height);
     

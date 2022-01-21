@@ -110,7 +110,7 @@ System::System(const string& yaml)
         "_iter"+ std::to_string(yaml_iter_num) + "_ceres" + std::to_string(yaml_ceres_iter_num)+
         "_gaussan" +std::to_string(yaml_gaussian_size) +"_sigma"+std::to_string(int(yaml_gaussian_size_sigma)) +"." +std::to_string(int(yaml_gaussian_size_sigma*10)%10)+
         "_denoise" + std::to_string(yaml_denoise_num) + 
-        "_defaultval" +std::to_string(int(yaml_default_value_factor)) +"." +std::to_string(int(yaml_default_value_factor*10)%10)+ ".txt";
+        ".txt";
     cout << "open file " << output_dir << endl; 
 
 
@@ -203,7 +203,7 @@ void System::undistortEvents()
     // store inner 
     event_undis_Bundle.DiscriminateInner(camera.width, camera.height);
 
-    getImageFromBundle(event_undis_Bundle, PlotOption::U16C3_EVNET_IMAGE_COLOR, false).convertTo(curr_undis_event_image, CV_32F);
+    getImageFromBundle(event_undis_Bundle, PlotOption::U16C3_EVNET_IMAGE_COLOR).convertTo(curr_undis_event_image, CV_32F);
     // cout << "success undistort events " << endl;
 }
 
@@ -214,7 +214,7 @@ void System::undistortEvents()
 * \param cv_3D_surface_index store index (height, width, channel)
 * \param cv_3D_surface_index_count store index count (height, width, count)
 */
-cv::Mat System::getImageFromBundle(EventBundle& cur_event_bundle, const PlotOption option, bool is_mapping /*=false*/)
+cv::Mat System::getImageFromBundle(EventBundle& cur_event_bundle, const PlotOption option, float timerange)
 {
 
     // cout << "getImageFromBundle " << cur_event_bundle.coord.cols() << ", is_mapping "<< is_mapping << endl;
@@ -228,11 +228,6 @@ cv::Mat System::getImageFromBundle(EventBundle& cur_event_bundle, const PlotOpti
 
     int width = camera.width, height = camera.height; 
 
-    if(is_mapping)
-    {
-        width = camera.width_map; 
-        height = camera.height_map; 
-    }
     // cout << "  image size (h,w) = " << height << "," << width << endl;
 
     switch (option)
@@ -242,7 +237,7 @@ cv::Mat System::getImageFromBundle(EventBundle& cur_event_bundle, const PlotOpti
         image = cv::Mat(height,width, CV_16UC3);
         image = cv::Scalar(0,0,0); // clear first 
         
-        #pragma omp parallel for 
+        // #pragma omp parallel for 
         for(int i = cur_event_bundle.coord.cols()-1; i>0; i--)
         // for(int i=0; i<cur_event_bundle.coord.cols(); i++)
         {
@@ -436,18 +431,19 @@ Eigen::Matrix3d System::get_local_rotation_b2f(bool inverse)
 void System::Run()
 {
     
-    /* update eventBundle */ 
-        eventBundle.Append(vec_vec_eventData[vec_vec_eventData_iter]);      
-        vec_vec_eventData_iter++;
-
     // check current eventsize or event interval 
-    double time_interval = (eventBundle.last_tstamp-eventBundle.first_tstamp).toSec();
-    if(time_interval < 0.002 || eventBundle.size < 4000)
+    double time_interval = (vec_vec_eventData[vec_vec_eventData_iter].back().ts - vec_vec_eventData[vec_vec_eventData_iter].front().ts).toSec();
+    if(time_interval < 0.006 || vec_vec_eventData[vec_vec_eventData_iter].size() < 3000)
     {
-        cout << "no enough interval or num: " <<time_interval << ", "<< eventBundle.size << endl;
+        cout << "no enough interval or num: " <<time_interval << ", "<< vec_vec_eventData[vec_vec_eventData_iter].size() << endl;
+        eventBundle.Clear();
+        vec_vec_eventData_iter++;
         return; 
     }
 
+    /* update eventBundle */ 
+        eventBundle.Append(vec_vec_eventData[vec_vec_eventData_iter]);      
+        vec_vec_eventData_iter++;
 
     // cout << "----processing event bundle------ size: " <<eventBundle.size  << 
         // ", vec leave:" <<vec_vec_eventData.size() - vec_vec_eventData_iter << endl; 
@@ -489,8 +485,8 @@ void System::Run()
     // EstimateMotion_kim();          // CMax - kim
     // EstimateMotion_CM_ceres();        // CMax - ceres 
     // EstimateMotion_PPP_ceres(); // ST-PPP
-    // EstimateMotion_ransca_ceres(); // ours with double and single 
-    EstimateMotion_ransca_ceres_RT(); // ours with double and single 
+    EstimateMotion_ransca_ceres(); // ours with double and single 
+    // EstimateMotion_ransca_ceres_RT(); // ours with double and single 
 
 
     // EstimateRunTime_CM();

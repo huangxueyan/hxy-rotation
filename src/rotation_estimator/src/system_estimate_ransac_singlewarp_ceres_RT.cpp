@@ -164,8 +164,7 @@ void System::EstimateMotion_ransca_ceres_RT()
         Eigen::Vector3d eg_angleAxis(angleAxis[0],angleAxis[1],angleAxis[2]);
         // cout << "before angleaxis " << eg_angleAxis.transpose() << endl;
          
-        // double timesurface_range = iter_/50.0 + 0.2;  // original 
-        // double timesurface_range = (iter_)/60.0 + 0.2;
+        // double timesurface_range = ts_end;  // original 
         double timesurface_range = ts_start + iter_/float(total_iter_num) * (ts_end-ts_start);  
         cv::Mat cv_earlier_timesurface = cv::Mat(180,240, CV_32FC1); 
 
@@ -176,28 +175,15 @@ void System::EstimateMotion_ransca_ceres_RT()
 
         // get t0 time surface of warpped image using latest angleAxis
         
+
+
+        // get early timesurface in time range 
         t1 = ros::Time::now();
-        // getWarpedEventImage(eg_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);  // get latest warpped events 
-        getWarpedEventImage(eg_angleAxis, event_warpped_Bundle);  // get latest warpped events 
+        // getWarpedEventImage(eg_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3); 
+        getWarpedEventImage(eg_angleAxis, event_warpped_Bundle, PlotOption::U16C3_EVNET_IMAGE_COLOR, false, timesurface_range).convertTo(curr_warpped_event_image, CV_32FC3);
         t2 = ros::Time::now();
         if(show_time_info)
-            cout << "getWarpedEventImage time " << (t2-t1).toSec() * 2 << endl;  // 0.00691187 s
-        
-        // visual optimizng process 
-        // if(iter_ % 2  == 0) 
-        // {
-        //     cv::Mat temp_img;
-        //     getWarpedEventImage(eg_angleAxis, event_warpped_Bundle).convertTo(temp_img, CV_32FC3);
-        //     cv::imshow("opti", temp_img);
-        //     // cv::Mat temp_img_char;
-        //     // cv::threshold(temp_img, temp_img_char, 0.1, 255, cv::THRESH_BINARY);
-        //     // cv::imwrite("/home/hxy/Desktop/hxy-rotation/data/optimize/opti_" + std::to_string(iter_) + ".png", temp_img_char);
-        //     cv::waitKey(30);
-        // }
-
-
-    t1 = ros::Time::now();
-        // get early timesurface
+            cout << "getWarpedEventImage time " << (t2-t1).toSec() << endl;  // 0.00691187 s
         for(int i= event_warpped_Bundle.size*timesurface_range; i >=0; i--)
         {
             
@@ -207,9 +193,6 @@ void System::EstimateMotion_ransca_ceres_RT()
             // linear add TODO improve to module 
                 cv_earlier_timesurface.at<float>(sampled_y, sampled_x) = eventBundle.time_delta(i);  
         } 
-    t2 = ros::Time::now();
-    if(show_time_info)
-        cout << "cv_earlier_timesurface time " << (t2-t1).toSec() * 2 << endl; // 0.000106088
 
             /* visualize timesurface */  
             // {
@@ -280,35 +263,36 @@ void System::EstimateMotion_ransca_ceres_RT()
         ceres::Solver::Summary summary; 
 
         // evaluate: choose init velocity, test whether using last_est or {0,0,0},
-        if(iter_ == 1)
-        {
-            double cost = 0;
-            vector<double> residual_vec; 
-            // previous old velocity  
-            angleAxis[0] = est_angleAxis(0); angleAxis[1] = est_angleAxis(1); angleAxis[1] = est_angleAxis(2); 
-            problem.Evaluate(ceres::Problem::EvaluateOptions(), &cost, &residual_vec, nullptr, nullptr);
-            double residual_sum_old = std::accumulate(residual_vec.begin(), residual_vec.end(), 0.0);
-            // 0 init 
-            angleAxis[0] = 0; angleAxis[1] = 0; angleAxis[2] = 0;  
-            problem.Evaluate(ceres::Problem::EvaluateOptions(), &cost, &residual_vec, nullptr, nullptr);
-            double residual_sum_0 = std::accumulate(residual_vec.begin(), residual_vec.end(), 0.0);
+        // if(iter_ == 1)
+        // {
+        //     double cost = 0;
+        //     vector<double> residual_vec; 
+        //     // previous old velocity  
+        //     angleAxis[0] = est_angleAxis(0); angleAxis[1] = est_angleAxis(1); angleAxis[1] = est_angleAxis(2); 
+        //     problem.Evaluate(ceres::Problem::EvaluateOptions(), &cost, &residual_vec, nullptr, nullptr);
+        //     double residual_sum_old = std::accumulate(residual_vec.begin(), residual_vec.end(), 0.0);
+        //     // 0 init 
+        //     angleAxis[0] = 0; angleAxis[1] = 0; angleAxis[2] = 0;  
+        //     problem.Evaluate(ceres::Problem::EvaluateOptions(), &cost, &residual_vec, nullptr, nullptr);
+        //     double residual_sum_0 = std::accumulate(residual_vec.begin(), residual_vec.end(), 0.0);
 
-            if(residual_sum_old < residual_sum_0)
-            {
-                angleAxis[0] = est_angleAxis(0); 
-                angleAxis[1] = est_angleAxis(1);
-                angleAxis[1] = est_angleAxis(2);  
-            }
+        //     if(residual_sum_old < residual_sum_0)
+        //     {
+        //         angleAxis[0] = est_angleAxis(0); 
+        //         angleAxis[1] = est_angleAxis(1);
+        //         angleAxis[1] = est_angleAxis(2);  
+        //     }
             
-            // cout << "using " << angleAxis[0] << "," << angleAxis[1] << "," << angleAxis[2] 
-            // << ", residual size " << residual_vec.size() << ", sum_0: "<<  residual_sum_0 << ", sum_old: " <<residual_sum_old << endl; 
-        }
+        //     // cout << "using " << angleAxis[0] << "," << angleAxis[1] << "," << angleAxis[2] 
+        //     // << ", residual size " << residual_vec.size() << ", sum_0: "<<  residual_sum_0 << ", sum_old: " <<residual_sum_old << endl; 
+        // }
 
 
         t1 = ros::Time::now();
         ceres::Solve(options, &problem, &summary);
         t2 = ros::Time::now();
-        cout << "ceres time " << (t2-t1).toSec() <<", others " << (t1-t0).toSec() << endl;  // 0.00383356 
+        if(iter_%3==0)
+            cout << "ceres time " << (t2-t1).toSec() <<", others " << (t1-t0).toSec() << endl;  // 0.00383356 
         
         // cout << summary.BriefReport() << endl;
 

@@ -9,6 +9,7 @@
 #include <std_msgs/String.h>
 #include <dvs_msgs/Event.h>
 #include <dvs_msgs/EventArray.h> 
+#include <dvs_msgs/EventDepthArray.h> 
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/image_encodings.h>
 #include <cv_bridge/cv_bridge.h>
@@ -44,7 +45,6 @@ int main(int argc, char** argv)
     ros::Publisher raw_image = nh_private.advertise<sensor_msgs::Image>("/raw_image",10);
     ros::Publisher event_image = nh_private.advertise<sensor_msgs::Image>("/event_image",10);
     
-
     Event_reader event_reader(yaml, &event_array_pub, &event_image); 
 
     double sleep_rate = event_reader.sleep_rate;

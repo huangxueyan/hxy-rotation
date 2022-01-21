@@ -61,15 +61,13 @@ public:
 // imgproc
     void Run();
     void undistortEvents();
-    cv::Mat getWarpedEventImage(const Eigen::Vector3d & temp_ang_vel,EventBundle& event_out,
-        const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR, bool ref_t1 = false, float range=1); 
+    cv::Mat getWarpedEventImage(const Eigen::Vector2d & temp_trans_vel,EventBundle& event_out,
+        const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR, bool ref_t1 = false); 
 
     void getWarpedEventPoints(const EventBundle& eventIn, EventBundle& eventOut,
-        const Eigen::Vector3d& cur_ang_vel,  bool ref_t1=false, float range=1);
+        const Eigen::Vector2d& cur_trans_vel,  bool ref_t1=false);
     cv::Mat getImageFromBundle(EventBundle& eventBundle,
-        const PlotOption option = PlotOption::U16C3_EVNET_IMAGE_COLOR, float range=1);
-
-    void getMapImage(); 
+        const PlotOption option = PlotOption::U16C3_EVNET_IMAGE_COLOR);
 
 // optimize
     void localCM(); 
@@ -78,6 +76,7 @@ public:
     void EstimateMotion_CM_ceres();
     void EstimateMotion_PPP_ceres();
     void EstimateMotion_ransca_ceres();
+    void EstimateMotion_ransca_ceres_evaluate();
     void EstimateMotion_ransca_ceres_RT();
     void EstimateMotion_KS_ceres();
 
@@ -85,24 +84,6 @@ public:
     void EstimateRunTime_PPP();
     void EstimateRunTime_Single();
     void EstimateRunTime_Double();
-
-    // void EstimateMotion_ransca_once(double sample_ratio, double warp_time_ratio, double opti_steps);
-    // void EstimateMotion_ransca_warp2bottom(double sample_start, double sample_end, double opti_steps);
-
-    Eigen::Vector3d DeriveErrAnalytic(const Eigen::Vector3d &vel_angleAxis, const Eigen::Vector3d &pos_angleAxis);
-    
-
-    Eigen::Vector3d DeriveTimeErrAnalyticRansacBottom(const Eigen::Vector3d &vel_angleAxis, 
-        const std::vector<int>& vec_sampled_idx, double& residuals);
-    Eigen::Vector3d GetGlobalTimeResidual();
-
-    // random warp time version 
-    Eigen::Vector3d DeriveTimeErrAnalyticRansac(const Eigen::Vector3d &vel_angleAxis, 
-        const std::vector<int>& vec_sampled_idx, double warp_time, double& residuals);
-    void getTimeResidual(int sampled_x, int sampled_y, double sampled_time, double warp_time,
-            double& residual, double& grad_x, double& grad_y);
-    // Eigen::Vector3d DeriveTimeErrAnalyticLayer(const Eigen::Vector3d &vel_angleAxis, 
-    //     const std::vector<int>& vec_sampled_idx, double warp_time, double& residuals);
 
     void getSampledVec(vector<int>& vec_sampled_idx, int samples_count, double sample_start, double sample_end);
     
@@ -194,9 +175,7 @@ private:
 
     // 逻辑是t2-t1->t0. 如eq(3)所示
     Eigen::Vector3d gt_angleAxis ; // gt anglar anxis from t2->t1,.  = theta / delta_time 
-    Eigen::Vector3d est_angleAxis; // estimated anglar anxis from t2->t1.  = theta / delta_time 
-
-    Eigen::Vector3d last_est_var; // 正则项， 控制est_N_norm的大小
+    Eigen::Vector2d est_trans_vel; // estimated anglar anxis from t2->t1.  = theta / delta_time 
 
 // output 
     size_t seq_count;

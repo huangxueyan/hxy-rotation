@@ -35,7 +35,7 @@ void ImageGrabber::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 }
 
 
-void EventGrabber::GrabEvent(const dvs_msgs::EventDepthArrayConstPtr& msg) 
+void EventGrabber::GrabEvent(const dvs_msgs::EventArrayConstPtr& msg) 
 {
     if(msg->events.empty() || msg->events.size()<1000) return; 
 
@@ -55,9 +55,7 @@ void EventGrabber::GrabEvent(const dvs_msgs::EventDepthArrayConstPtr& msg)
     cout<<"receiving events " << msg->events.size() <<", time: " << msg->events[0].ts.toSec()<<", delta time " << delta_time <<endl;
 
     // system->que_vec_eventData_mutex.lock();
-
-    std::vector<double> vec_depth(msg->depths.begin(), msg->depths.end());
-    system->pushEventData(msg->events, vec_depth);
+    system->pushEventData(msg->events);
     // system->que_vec_eventData_mutex.unlock();
 
 }

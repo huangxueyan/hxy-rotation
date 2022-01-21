@@ -7,7 +7,6 @@
 #include <sensor_msgs/image_encodings.h>
 #include <dvs_msgs/Event.h>
 #include <dvs_msgs/EventArray.h>
-#include <dvs_msgs/EventDepthArray.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <cv_bridge/cv_bridge.h>
 
@@ -37,7 +36,7 @@ class EventGrabber
 public:
     EventGrabber(System* sys): system(sys){}
     
-    void GrabEvent(const dvs_msgs::EventDepthArrayConstPtr& msg);
+    void GrabEvent(const dvs_msgs::EventArrayConstPtr& msg);
     System* system; 
 }; 
 

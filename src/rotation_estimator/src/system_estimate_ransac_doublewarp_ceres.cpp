@@ -390,7 +390,7 @@ void System::EstimateMotion_ransca_ceres()
         options.num_threads = yaml_ceres_iter_thread;
         // options.logging_type = ceres::SILENT;
         options.linear_solver_type = ceres::SPARSE_SCHUR;
-        options.use_nonmonotonic_steps = true;
+        // options.use_nonmonotonic_steps = true;
         options.max_num_iterations = yaml_ceres_iter_num;
         // options.initial_trust_region_radius = 1;
         // problem.SetParameterLowerBound(&angleAxis[0],0,-20);
