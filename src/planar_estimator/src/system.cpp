@@ -489,8 +489,8 @@ void System::save_velocity()
     Eigen::Vector3d N_norm_cos = {costha*sinphi, sintha*sinphi, cosphi};
 
     est_velocity_file << seq_count++ <<" " << eventBundle.first_tstamp << " " << 
-                        eventBundle.last_tstamp << " " << est_angleAxis.transpose() << " " <<
-                        est_trans_velocity.transpose() << " " << N_norm_cos.transpose() <<  endl;
+                        eventBundle.last_tstamp << " " << -est_angleAxis.transpose() << " " <<
+                        -est_trans_velocity.transpose() << " " << N_norm_cos.transpose() <<  endl;
 
 }
 

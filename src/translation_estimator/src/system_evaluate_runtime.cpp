@@ -13,13 +13,17 @@ void System::EstimateRunTime_CM()
 
     int total_iter_num = yaml_iter_num;
 
-    int right_range = 90, left_range = -20;
-    cv::Mat loss_img(right_range-left_range, right_range-left_range, CV_32F, cv::Scalar(0));
+    // int right_x_range = 42, left_x_range = 7; // far 
+    // int right_y_range = 20, left_y_range = -15;
+
+    int right_x_range = 80, left_x_range = 40;
+    int right_y_range = 20, left_y_range = -20;
+    cv::Mat loss_img(right_y_range-left_y_range, right_x_range-left_x_range, CV_32F, cv::Scalar(0));
     
     double best_var = 0;
-
-    for(int _y = left_range ; _y < right_range; _y++)
-    for(int _x = left_range ; _x < right_range; _x++)
+    int best_x = 0, best_y = 0;    
+    for(int _y = left_y_range ; _y < right_y_range; _y++)
+    for(int _x = left_x_range ; _x < right_x_range; _x++)
     {
         // get timesurface earlier 
         
@@ -84,17 +88,34 @@ void System::EstimateRunTime_CM()
             cout << "----------------------" << endl;
         }
 
-        if(var > best_var && std::abs(_y)<3)
+        if(var > best_var)
         {
             best_var = var;
+            best_x = _x; best_y = _y;
+            // getWarpedEventImage(eg_trans_vel, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);
+            // cv::normalize(curr_warpped_event_image, curr_warpped_event_image, 255, 0, cv::NORM_MINMAX, CV_8UC1);  
+            // cv::threshold(curr_warpped_event_image, curr_warpped_event_image, 0.1, 255, cv::THRESH_BINARY);
+            // cv::imwrite("/home/hxy/Desktop/hxy-rotation/data/translation_estimation/iwe_CM_" 
+            //     +std::to_string(best_var) + +"_("+std::to_string(_x) + "," + std::to_string(_y) + ").png", curr_warpped_event_image);
+        }
+
+        loss_img.at<float>(_y-left_y_range, _x - left_x_range) = var; 
+    }
+
+
+    {  // save 
+            Eigen::Vector2d eg_trans_vel = {0.01 * best_x, 0.01 * best_y};
             getWarpedEventImage(eg_trans_vel, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);
             cv::normalize(curr_warpped_event_image, curr_warpped_event_image, 255, 0, cv::NORM_MINMAX, CV_8UC1);  
             cv::threshold(curr_warpped_event_image, curr_warpped_event_image, 0.1, 255, cv::THRESH_BINARY);
             cv::imwrite("/home/hxy/Desktop/hxy-rotation/data/translation_estimation/iwe_CM_" 
-                +std::to_string(best_var) + +"_("+std::to_string(_x) + "," + std::to_string(_y) + ").png", curr_warpped_event_image);
-        }
+                +std::to_string(best_var) +"_best("+std::to_string(best_x) + "," + std::to_string(best_y) + ").png", curr_warpped_event_image);
 
-        loss_img.at<float>(_y-left_range, _x - left_range) = var; 
+            eg_trans_vel = {0.01 * 0, 0.01 * 0};
+            getWarpedEventImage(eg_trans_vel, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);
+            cv::normalize(curr_warpped_event_image, curr_warpped_event_image, 255, 0, cv::NORM_MINMAX, CV_8UC1);  
+            cv::threshold(curr_warpped_event_image, curr_warpped_event_image, 0.1, 255, cv::THRESH_BINARY);
+            cv::imwrite("/home/hxy/Desktop/hxy-rotation/data/translation_estimation/iwe_original(0,0).png", curr_warpped_event_image);
     }
 
     cv::namedWindow("loss", cv::WINDOW_NORMAL); 
@@ -103,7 +124,7 @@ void System::EstimateRunTime_CM()
         cv::applyColorMap(image_color, image_color, cv::COLORMAP_JET);
     cv::imshow("loss", image_color);
     cv::imwrite("/home/hxy/Desktop/hxy-rotation/data/translation_estimation/loss_CM.png", image_color);
-    cv::waitKey(0);
+    cv::waitKey(10);
 
 }
 
@@ -114,13 +135,15 @@ void System::EstimateRunTime_PPP()
 
     int total_iter_num = yaml_iter_num;
 
-    int right_range = 90, left_range = -20;
-    cv::Mat loss_img(right_range-left_range, right_range-left_range, CV_32F, cv::Scalar(0));
+    int right_x_range = 40, left_x_range = -0;
+    int right_y_range = 20, left_y_range = -20;
+    cv::Mat loss_img(right_y_range-left_y_range, right_x_range-left_x_range, CV_32F, cv::Scalar(0));
     
     double best_var = -100;
+    int best_x = 0, best_y = 0;
 
-    for(int _x = left_range ; _x < right_range; _x++)
-    for(int _y = left_range ; _y < right_range; _y++)
+    for(int _y = left_y_range ; _y < right_y_range; _y++)
+    for(int _x = left_x_range ; _x < right_x_range; _x++)
     {
         // get timesurface earlier 
         double angleAxis[2] = {0.01 * _x, 0.01 * _y}; 
@@ -217,17 +240,27 @@ void System::EstimateRunTime_PPP()
         }
 
 
-        if(loss1 + loss2 > best_var && std::abs(_y)<3)
+        if(loss1 + loss2 > best_var)
         {
             best_var = loss1 + loss2;
-            getWarpedEventImage(eg_trans_vel, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);  // get latest warpped events 
+            best_x = _x; best_y = _y;
+        //     getWarpedEventImage(eg_trans_vel, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);  // get latest warpped events 
+        //     cv::normalize(curr_warpped_event_image, curr_warpped_event_image, 255, 0, cv::NORM_MINMAX, CV_8UC1);  
+        //     cv::threshold(curr_warpped_event_image, curr_warpped_event_image, 0.1, 255, cv::THRESH_BINARY);
+        //     cv::imwrite("/home/hxy/Desktop/hxy-rotation/data/translation_estimation/iwe_PPP_" 
+        //         +std::to_string(std::abs(best_var)) + +"_("+std::to_string(_x) + "," + std::to_string(_y) + ").png", curr_warpped_event_image);
+        }
+
+        loss_img.at<float>(_y-left_y_range, _x - left_x_range) = loss1 + loss2; 
+    }
+
+    {  // save 
+            Eigen::Vector2d eg_trans_vel = {0.01 * best_x, 0.01 * best_y};
+            getWarpedEventImage(eg_trans_vel, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);
             cv::normalize(curr_warpped_event_image, curr_warpped_event_image, 255, 0, cv::NORM_MINMAX, CV_8UC1);  
             cv::threshold(curr_warpped_event_image, curr_warpped_event_image, 0.1, 255, cv::THRESH_BINARY);
             cv::imwrite("/home/hxy/Desktop/hxy-rotation/data/translation_estimation/iwe_PPP_" 
-                +std::to_string(std::abs(best_var)) + +"_("+std::to_string(_x) + "," + std::to_string(_y) + ").png", curr_warpped_event_image);
-        }
-
-        loss_img.at<float>(_y-left_range, _x - left_range) = loss1 + loss2; 
+                +std::to_string(best_var) +"_best("+std::to_string(best_x) + "," + std::to_string(best_y) + ").png", curr_warpped_event_image);
     }
 
     cv::namedWindow("loss", cv::WINDOW_NORMAL); 
@@ -236,6 +269,6 @@ void System::EstimateRunTime_PPP()
     cv::applyColorMap(image_color, image_color, cv::COLORMAP_JET);
     cv::imshow("loss", image_color);
     cv::imwrite("/home/hxy/Desktop/hxy-rotation/data/translation_estimation/loss_PPP.png", image_color);
-    cv::waitKey(0);
+    cv::waitKey(10);
 
 }

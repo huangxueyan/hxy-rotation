@@ -264,6 +264,7 @@ void System::EstimateMotion_ransca_ceres()
         t1 = ros::Time::now();
         getWarpedEventImage(eg_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);  // get latest warpped events 
         t2 = ros::Time::now();
+        
         if(show_time_info)
             cout << "getWarpedEventImage time " << (t2-t1).toSec() * 2 << endl;  // 0.00691187 s
         

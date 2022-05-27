@@ -432,7 +432,7 @@ void System::Run()
     
     // check current eventsize or event interval 
     double time_interval = (vec_vec_eventData[vec_vec_eventData_iter].back().ts - vec_vec_eventData[vec_vec_eventData_iter].front().ts).toSec();
-    if(time_interval < 0.006 || vec_vec_eventData[vec_vec_eventData_iter].size() < 3000)
+    if(time_interval < 0.003 || vec_vec_eventData[vec_vec_eventData_iter].size() < 3000)
     {
         cout << "no enough interval or num: " <<time_interval << ", "<< vec_vec_eventData[vec_vec_eventData_iter].size() << endl;
         eventBundle.Clear();
@@ -458,9 +458,10 @@ void System::Run()
 
     t1 = ros::Time::now();
     // EstimateMotion_ransca_ceres(); // ours with double and single 
-    // EstimateRunTime_CM();
+    EstimateRunTime_CM();
     // EstimateRunTime_PPP();
     EstimateMotion_ransca_ceres_evaluate(); // ours with double and single 
+
     // EstimateRunTime_Single();
     // EstimateRunTime_Double();
     t2 = ros::Time::now();

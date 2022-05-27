@@ -133,7 +133,11 @@ System::System(const string& yaml)
     total_evaluate_time = 0;
     total_visual_time = 0;
     total_undistort_time = 0;
-
+    total_timesurface_time = 0;
+    total_ceres_time = 0;
+    total_eventbundle_time = 0; 
+    total_readevents_time = 0;
+    total_warpevents_time = 0;
     // cout << "COUNT " << seq_count <<", last est " << last_est_var << endl;
 
 }
@@ -430,10 +434,11 @@ Eigen::Matrix3d System::get_local_rotation_b2f(bool inverse)
 */
 void System::Run()
 {
+    ros::Time t1, t2; 
     
     // check current eventsize or event interval 
     double time_interval = (vec_vec_eventData[vec_vec_eventData_iter].back().ts - vec_vec_eventData[vec_vec_eventData_iter].front().ts).toSec();
-    if(time_interval < 0.006 || vec_vec_eventData[vec_vec_eventData_iter].size() < 3000)
+    if(time_interval < 0.003 || vec_vec_eventData[vec_vec_eventData_iter].size() < 3000)
     {
         cout << "no enough interval or num: " <<time_interval << ", "<< vec_vec_eventData[vec_vec_eventData_iter].size() << endl;
         eventBundle.Clear();
@@ -442,14 +447,15 @@ void System::Run()
     }
 
     /* update eventBundle */ 
+    t1 = ros::Time::now();
         eventBundle.Append(vec_vec_eventData[vec_vec_eventData_iter]);      
         vec_vec_eventData_iter++;
-
+    t2 = ros::Time::now();
+    total_eventbundle_time += (t2-t1).toSec();
     // cout << "----processing event bundle------ size: " <<eventBundle.size  << 
         // ", vec leave:" <<vec_vec_eventData.size() - vec_vec_eventData_iter << endl; 
 
     /* undistort events */ 
-    ros::Time t1, t2; 
 
     t1 = ros::Time::now();
         undistortEvents();
@@ -486,7 +492,7 @@ void System::Run()
     // EstimateMotion_CM_ceres();        // CMax - ceres 
     // EstimateMotion_PPP_ceres(); // ST-PPP
     EstimateMotion_ransca_ceres(); // ours with double and single 
-    // EstimateMotion_ransca_ceres_RT(); // ours with double and single 
+    // EstimateMotion_ransca_ceres_RT(); // RT version 
 
 
     // EstimateRunTime_CM();
@@ -551,9 +557,12 @@ void System::save_velocity()
 void System::pushEventData(const std::vector<dvs_msgs::Event>& ros_vec_event)
 {
     // que_vec_eventData.push(ros_vec_event); 
+    ros::Time t1 = ros::Time::now();
     vec_vec_eventData.push_back(ros_vec_event);
     // cout << " to vec_vec_eventData " << endl;  
     
+    total_readevents_time += (ros::Time::now() - t1).toSec();
+
     Run(); 
 }
 

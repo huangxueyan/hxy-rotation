@@ -73,7 +73,7 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
     else
     {   
         Eigen::VectorXd vec_delta_time = eventBundle.time_delta;  
-        if(ref_t1) vec_delta_time = eventBundle.time_delta.array() - eventBundle.time_delta(eventBundle.size-1);  
+        // if(ref_t1) vec_delta_time = eventBundle.time_delta.array() - eventBundle.time_delta(eventBundle.size-1);  
 
         if(delta_time > 0)  // using self defined deltime. 
         {
@@ -105,12 +105,20 @@ void System::getWarpedEventPoints(const EventBundle& eventIn, EventBundle& event
             N_norm.normalize();
             
             // exactly version  
+                double time_f2e = eventBundle.time_delta(eventBundle.size-1) - eventBundle.time_delta(0); 
+                double theta_f2e = ang_vel_norm * time_f2e;
+                Eigen::Matrix<double,3,3> rotation_f2e = Eigen::Matrix<double,3,3>::Identity() + sin(theta_f2e)*skew_m + (1.0-cos(theta_f2e))*skew_m*skew_m;
+                Eigen::Matrix<double,3,3> translation_f2e = cur_trans_vel * N_norm.transpose() * time_f2e; 
+
                 Eigen::Matrix<double,3,3> rotation;
                 for(int i=0; i<eventOut.coord_3d.cols(); i++)
                 {
                     double theta = ang_vel_norm*vec_delta_time(i);
                     rotation = Eigen::Matrix<double,3,3>::Identity() + sin(theta)*skew_m + (1.0-cos(theta))*skew_m*skew_m;
-                    eventOut.coord_3d.col(i) = (rotation + cur_trans_vel * N_norm.transpose()*vec_delta_time(i)) * eventIn.coord_3d.col(i);   
+                    eventOut.coord_3d.col(i) = (rotation + cur_trans_vel * N_norm.transpose()*vec_delta_time(i)).inverse().matrix() * eventIn.coord_3d.col(i);   
+
+                    if(ref_t1)
+                        eventOut.coord_3d.col(i) = (rotation_f2e + translation_f2e).matrix() * eventOut.coord_3d.col(i);   
                 }
         
         

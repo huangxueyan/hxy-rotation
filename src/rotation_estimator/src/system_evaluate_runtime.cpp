@@ -204,7 +204,7 @@ void System::EstimateRunTime_Single()
         float early_default_value = eventBundle.time_delta(int(eventBundle.size*timesurface_range));
         cv_earlier_timesurface.setTo(early_default_value * yaml_default_value_factor);
 
-        cout << "default value is " << early_default_value << endl;
+        // cout << "default value is " << early_default_value << endl;
 
 
         // get warpped events ref t0 and its timesurface 
@@ -267,7 +267,7 @@ void System::EstimateRunTime_Single()
                 if(new_coord_2d_early(i,1) < 0 || new_coord_2d_early(i,1) > 180 || 
                    new_coord_2d_early(i,0) < 0 || new_coord_2d_early(i,0) > 240  )
                    {
-                       cout << "points " << new_coord_2d_early(i, 0) << ", " << new_coord_2d_early(i, 1) << ", value " << early_loss << endl;
+                    //    cout << "points " << new_coord_2d_early(i, 0) << ", " << new_coord_2d_early(i, 1) << ", value " << early_loss << endl;
                    }
             }
         }

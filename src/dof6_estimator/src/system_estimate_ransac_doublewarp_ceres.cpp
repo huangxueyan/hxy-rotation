@@ -66,7 +66,7 @@ struct ResidualCostFunction
         // translation part new using matrix  
         {
             points_early_T = Rotation_early * points_T + T(delta_time_early_) * vel;
-            points_later_T = Rotation_later * (points_T + T(delta_time_later_) * vel);
+            points_later_T = Rotation_later * points_T + T(delta_time_later_) * Rotation_later  * vel;
         }
 
         points_2D_early_T(0) = points_early_T(0)/points_early_T(2)*T(intrisic_(0,0)) + T(intrisic_(0,2));

@@ -112,7 +112,14 @@ public:
 // file 
     bool inline file_opened() {return est_velocity_file.is_open();};
 
-    double total_evaluate_time, total_undistort_time, total_visual_time;
+    double total_evaluate_time, 
+            total_undistort_time, 
+            total_visual_time, 
+            total_timesurface_time, 
+            total_ceres_time, 
+            total_readevents_time, 
+            total_eventbundle_time, 
+            total_warpevents_time;
 
 
     // bool inline checkEmpty(){return que_vec_eventData.empty();}

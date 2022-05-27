@@ -165,6 +165,14 @@ void System::EstimateMotion_ransca_ceres()
          
         // double timesurface_range = iter_/50.0 + 0.2;  // original 
         // double timesurface_range = (iter_)/60.0 + 0.2;
+        
+    t1 = ros::Time::now();
+        // get t0 time surface of warpped image using latest angleAxis
+        getWarpedEventImage(eg_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);  // get latest warpped events 
+    t2 = ros::Time::now();
+    total_warpevents_time += (t2-t1).toSec(); 
+
+    t1 = ros::Time::now();
         double timesurface_range = ts_start + iter_/float(total_iter_num) * (ts_end-ts_start);  
         cv::Mat cv_earlier_timesurface = cv::Mat(180,240, CV_32FC1); 
 
@@ -173,14 +181,8 @@ void System::EstimateMotion_ransca_ceres()
         cv_earlier_timesurface.setTo(early_default_value * yaml_default_value_factor);
         // cout << "default early " << default_value << endl; 
 
-        // get t0 time surface of warpped image using latest angleAxis
         
-        t1 = ros::Time::now();
-        getWarpedEventImage(eg_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);  // get latest warpped events 
-        t2 = ros::Time::now();
-        if(show_time_info)
-            cout << "getWarpedEventImage time " << (t2-t1).toSec() * 2 << endl;  // 0.00691187 s
-        
+
         // visual optimizng process 
         // if(iter_ % 2  == 0) 
         // {
@@ -194,7 +196,6 @@ void System::EstimateMotion_ransca_ceres()
         // }
 
 
-    t1 = ros::Time::now();
         // get early timesurface
         for(int i= event_warpped_Bundle.size*timesurface_range; i >=0; i--)
         {
@@ -205,9 +206,6 @@ void System::EstimateMotion_ransca_ceres()
             // linear add TODO improve to module 
                 cv_earlier_timesurface.at<float>(sampled_y, sampled_x) = eventBundle.time_delta(i);  
         } 
-    t2 = ros::Time::now();
-    if(show_time_info)
-        cout << "cv_earlier_timesurface time " << (t2-t1).toSec() * 2 << endl; // 0.000106088
 
             /* visualize timesurface */  
             // {
@@ -226,6 +224,11 @@ void System::EstimateMotion_ransca_ceres()
         float sigma = yaml_gaussian_size_sigma;
         cv::GaussianBlur(cv_earlier_timesurface, cv_earlier_timesurface_blur, cv::Size(gaussian_size, gaussian_size), sigma);
 
+    t2 = ros::Time::now(); 
+    total_timesurface_time += (t2-t1).toSec();
+
+
+    t1 = ros::Time::now();
         // get timesurface in ceres 
         vector<float> line_grid_early; line_grid_early.assign((float*)cv_earlier_timesurface_blur.data, (float*)cv_earlier_timesurface_blur.data + 180*240);
 
@@ -235,15 +238,10 @@ void System::EstimateMotion_ransca_ceres()
         // sample events 
         // select 100 random points, and warp delta_t < min(t_point_delta_t). 
         // accumulate all time difference before and after warpped points. 
-    t1 = ros::Time::now();
         std::vector<int> vec_sampled_idx; 
         int samples_count = std::min(sample_num, int(eventBundle.size)); 
         getSampledVec(vec_sampled_idx, samples_count, 0, 1);
-    t2 = ros::Time::now();
-    if(show_time_info)
-        cout << "getSampledVec time " << (t2-t1).toSec() << endl; // 0.000473817
 
-    t1 = ros::Time::now();  
         // init problem 
         ceres::Problem problem; 
         // add residual 
@@ -260,9 +258,6 @@ void System::EstimateMotion_ransca_ceres()
 
             problem.AddResidualBlock(cost_function, nullptr, &angleAxis[0]);
         }
-    t2 = ros::Time::now();
-    if(show_time_info)
-        cout << "add residual time " << (t2-t1).toSec() << endl;  // 0.00168042
 
         ceres::Solver::Options options;
         options.minimizer_progress_to_stdout = false;
@@ -307,12 +302,9 @@ void System::EstimateMotion_ransca_ceres()
         // }
 
 
-        t1 = ros::Time::now();
         ceres::Solve(options, &problem, &summary);
-        t2 = ros::Time::now();
-        if(show_time_info)
-            cout << "ceres time " << (t2-t1).toSec() << endl;  // 0.00383356 
-        
+    t2 = ros::Time::now();
+    total_ceres_time += (t2-t1).toSec();
         // cout << summary.BriefReport() << endl;
 
         // cout << "   iter " << iter_ << ", ceres iters " << summary.iterations.size()<< endl;

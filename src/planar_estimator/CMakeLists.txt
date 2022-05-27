@@ -156,8 +156,8 @@ add_executable(${PROJECT_NAME}_node
         src/numerics.cpp
         src/system_estimate.cpp                 # store utils for motion estimation  
         # src/system_estimate_ransac_cos_ceres.cpp  # timesurface method with double warp using ceres
-        src/system_estimate_ransac_norm_ceres.cpp  # timesurface method with double warp using ceres
-        # src/system_estimate_ransac_samples_ceres.cpp       # timesurface ransac method using previous timesurface
+        # src/system_estimate_ransac_single_norm_ceres.cpp  # timesurface method with single warp using ceres
+        src/system_estimate_ransac_double_norm_ceres.cpp  # timesurface method with double warp using ceres
         # src/system_estimate_kim.cpp
         )            # using kim method with self defined gradient function, R
 

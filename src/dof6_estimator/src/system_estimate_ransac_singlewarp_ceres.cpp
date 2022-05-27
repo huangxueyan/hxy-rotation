@@ -385,28 +385,14 @@ void System::EstimateMotion_ransca_ceres(double ts_start, double ts_end, int sam
 
     // output data
     {
-        Eigen::Vector3d cur_est_w = Eigen::Vector3d(ag_v_ang[0],ag_v_ang[1],ag_v_ang[2]);
-        Eigen::Vector3d cur_est_t = Eigen::Vector3d(ag_v_ang[3],ag_v_ang[4],ag_v_ang[5]);
+        // output data 
+        est_angleAxis = Eigen::Vector3d(ag_v_ang[0],ag_v_ang[1],ag_v_ang[2]);
+        est_trans_velocity = Eigen::Vector3d(ag_v_ang[3],ag_v_ang[4],ag_v_ang[5]);
 
-        // bool valid_esti_flag = (cur_est_w.norm()/est_angleAxis.norm() < 3) 
-        //         && (cur_est_t.norm()/est_trans_velocity.norm() < 3);
+        cout << "    Loss: " << 0 << ", est_angleAxis " << est_angleAxis.transpose() << 
+        ", trans " << est_trans_velocity.transpose() << endl;
 
-        // if(valid_esti_flag)
-        {
-            est_angleAxis = cur_est_w;
-            est_trans_velocity = cur_est_t;
-
-            cout << "Loss: " << 0 << ", est_angleAxis " << est_angleAxis.transpose() << 
-            ", trans " << est_trans_velocity.transpose() << endl;
-    
-            last_est_var << est_angleAxis, est_trans_velocity;  
-        
-        }
-        // else
-        // {
-        //     cout << "wrong estimate before" <<   est_angleAxis.transpose() << "," << cur_est_w.transpose()<< endl;
-        //     cout << "wrong estimate before" <<   est_angleAxis.transpose() << "," << cur_est_t.transpose()<< endl;
-        // }
+        last_est_var << est_angleAxis, est_trans_velocity;  
     } 
 }
 

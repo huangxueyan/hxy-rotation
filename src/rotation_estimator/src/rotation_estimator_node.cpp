@@ -49,44 +49,57 @@ int main(int argc, char** argv)
         cout << "failed opening file " << endl;
         // return 0;
     }
-
+    
+    ros::Time t1, t2; 
+    t1 = ros::Time::now();
     /* Event ROS version */
-        EventGrabber eventGrabber(sys);
-        ros::Subscriber event_sub = nh.subscribe("/dvs/events", 10, &EventGrabber::GrabEvent, &eventGrabber);
-        ros::spin();
+        // EventGrabber eventGrabber(sys);
+        // ros::Subscriber event_sub = nh.subscribe("/dvs/events", 10, &EventGrabber::GrabEvent, &eventGrabber);
+        // ros::spin();
     
     /** Event TXT version */ 
-    // Event_reader event_reader(yaml); 
-    // while (true)
-    // {
-    //     // read data 
-    //     ros::Time t1, t2; 
-    //     t1 = ros::Time::now();
-    //         dvs_msgs::EventArrayPtr msg_ptr = dvs_msgs::EventArrayPtr(new dvs_msgs::EventArray());
-    //         event_reader.acquire(msg_ptr);
-    //     t2 = ros::Time::now();
-    //     // cout << "event_reader.acquire time " << (t2-t1).toSec() << endl;  // 0.50643
+    double total_event_acquire_time = 0;
+    Event_reader event_reader(yaml); 
+    while (true)
+    {
+        // read data 
+        // ros::Time t1, t2; 
+        ros::Time t3 = ros::Time::now();
+            dvs_msgs::EventArrayPtr msg_ptr = dvs_msgs::EventArrayPtr(new dvs_msgs::EventArray());
+            event_reader.acquire(msg_ptr);
+        // t2 = ros::Time::now();
+        total_event_acquire_time += (ros::Time::now() - t3).toSec();
+        // cout << "event_reader.acquire time " << (t2-t1).toSec() << endl;  // 0.50643
 
 
-    //     if(msg_ptr==nullptr || msg_ptr->events.empty() )
-    //     {
-    //         cout << "wrong reading events, msgptr==null" << int(msg_ptr==nullptr) << "empty events " << int(msg_ptr->events.empty()) << endl;
-    //         break;
-    //     }
+        if(msg_ptr==nullptr || msg_ptr->events.empty() )
+        {
+            cout << "wrong reading events, msgptr==null" << int(msg_ptr==nullptr) << "empty events " << int(msg_ptr->events.empty()) << endl;
+            break;
+        }
 
 
-    //     t1 = ros::Time::now();
-    //         sys->pushEventData(msg_ptr->events);
-    //     t2 = ros::Time::now();
-    //     // cout << "sys pushEventData" << (t2-t1).toSec() << endl;  // 0.00691187 s
+        // t1 = ros::Time::now();
+            sys->pushEventData(msg_ptr->events);
+        // t2 = ros::Time::now();
+        // cout << "sys pushEventData" << (t2-t1).toSec() << endl;  // 0.00691187 s
 
-    //     // cout << "success reveive" << endl;
-    //     // break;
-    // }
-
-    cout << "total evaluate time "<< sys->total_evaluate_time << 
-            " total undistort time "<< sys->total_undistort_time << 
-            " total visual time "<< sys->total_visual_time << endl;
+        // cout << "success reveive" << endl;
+        // break;
+    }
+    
+    
+    double total_program_runtime = (ros::Time::now() - t1).toSec(); 
+    cout << " total program time "<< total_program_runtime << endl;
+    cout << " total total_event_acquire_time "<< total_event_acquire_time << endl;
+    // cout << " total read events time "<< sys->total_readevents_time << endl;
+    cout << " total create event bundle time "<< sys->total_eventbundle_time << endl;
+    cout << " total evaluate time "<< sys->total_evaluate_time << endl;
+    cout << " total warpevents time "<< sys->total_warpevents_time << endl; 
+    cout << " total timesurface time "<< sys->total_timesurface_time << endl; 
+    cout << " total ceres time "<< sys->total_ceres_time << endl;
+    cout << " total undistort time "<< sys->total_undistort_time << endl;
+    cout << " total visual time "<< sys->total_visual_time << endl;
 
     cout << "shutdown rotation estimator" << endl;
     return 0;

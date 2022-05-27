@@ -171,12 +171,13 @@ add_executable(${PROJECT_NAME}_node
         # src/system_estimate_ransca.cpp          # ransac method with self defined gradient function, RMSPros
         # src/system_estimate_CM_ceres.cpp
         # src/system_estimate_PPP_ceres.cpp
-        # src/system_estimate_ransac_doublewarp_ceres.cpp  # timesurface method with double warp using ceres
-        src/system_estimate_ransac_singlewarp_ceres.cpp  # timesurface method with double warp using ceres
+        src/system_estimate_ransac_doublewarp_ceres.cpp  # timesurface method with double warp using ceres
+        # src/system_estimate_ransac_singlewarp_ceres.cpp  # timesurface method with double warp using ceres
         # src/system_estimate_ransac_singlewarp_ceres_RT.cpp  # timesurface method with double warp using ceres
         # src/system_estimate_ransac_ceres_one.cpp       # one loss of ceres
-        # src/system_evaluate_runtime.cpp
-        src/system_estimate_kim.cpp)            # using kim method with self defined gradient function, R
+        src/system_evaluate_runtime.cpp
+        src/system_estimate_kim.cpp
+        )            # using kim method with self defined gradient function, R
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
