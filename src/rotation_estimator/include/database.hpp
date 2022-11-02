@@ -88,6 +88,7 @@ struct EventBundle{
 
     // core opearte
     void Append(std::vector<dvs_msgs::Event>& vec_eventData);
+    void Append(std::vector<dvs_msgs::Event>& vec_eventData, ros::Time first_tstamp_);
     void CopySize(const EventBundle& eb); 
 
     void Clear(); 
@@ -100,7 +101,7 @@ struct EventBundle{
 
 
     // events in eigen form used as 3d porjection    
-    Eigen::Matrix2Xd coord;                   // row, col = [2,pixels], used for Eigen rotation 
+    Eigen::Matrix2Xd coord;                   // row, col = [2,pixels]
     Eigen::Matrix3Xd coord_3d;                // row, col = [3,pixels], used for Eigen rotation 
 
     // relative time of event

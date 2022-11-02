@@ -76,6 +76,12 @@
         "variant": "cpp",
         "sparseqr": "cpp",
         "unordered_set": "cpp",
-        "future": "cpp"
+        "future": "cpp",
+        "csignal": "cpp",
+        "codecvt": "cpp",
+        "cfenv": "cpp",
+        "specialfunctions": "cpp",
+        "alignedvector3": "cpp",
+        "fft": "cpp"
     }
 }

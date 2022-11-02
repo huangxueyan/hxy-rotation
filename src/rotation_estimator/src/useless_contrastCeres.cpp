@@ -53,7 +53,7 @@ struct NumericDiffCostFunctor
             // TODO add gaussian 
             int x = int(new_coord_2d(0,i)), y = int(new_coord_2d(1,i));
 
-            if(x >= 240 || x < 0 || y >= 180 || y < 0)
+            if(x >= camera.width || x < 0 || y >= camera.height || y < 0)
             {
                 // cout <<" overflow x, y" << x <<"," << y << endl;
                 continue;

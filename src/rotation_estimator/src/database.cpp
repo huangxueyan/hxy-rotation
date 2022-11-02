@@ -6,15 +6,10 @@ using namespace std;
 
 CameraPara::CameraPara()
 {
+
+/* DAVIS */
     width = 240; 
     height = 180; 
-
-    // fx = 230.2097;
-    // fy = 231.1228;
-    // cx = 121.6862;
-    // cy = 86.8208;
-    // rd1 = -0.4136;
-    // rd2 = 0.2042;
 
     fx = 199.092366542;
     fy = 198.82882047;
@@ -25,9 +20,22 @@ CameraPara::CameraPara()
     p1 = -0.000296130534385;
     p2 = -0.000759431726241;
     k3 = 0.0;
+/*  end of davis */
 
+/*  start MOTION20 */
+    // width = 346; 
+    // height = 260; 
+    // fx = 289.7740;
+    // fy = 288.8098;
+    // cx = 185.97;
+    // cy = 132.5850 ;
+    // k1 = -0.361699983842314;
+    // k2 =  0.158697458565572;
+    // p1 = 0;
+    // p2 = 0;
+    // k3 = 0.0;
+/*  end MOTION20 */
      
-
 
     cameraMatrix = (cv::Mat_<float>(3,3) << 
                     fx, 0, cx , 0, fy, cy, 0, 0, 1); 
@@ -133,7 +141,7 @@ void EventBundle::DiscriminateInner(int width, int height)
     // #pragma omp parallel for 
     for(uint32_t i = 0; i < size; ++i)
     {
-        if(coord(0,i)<3 || coord(0,i)>=(width-3) || coord(1,i)<3 || coord(1,i)>=(height-3)) 
+        if(coord(0,i)<2 || coord(0,i)>=(width-2) || coord(1,i)<2 || coord(1,i)>=(height-2)) 
             isInner[i] = 0;
         else isInner[i] = 1;
     }
@@ -157,7 +165,7 @@ void EventBundle::Append(std::vector<dvs_msgs::Event>& vec_eventData)
     }
     else
     {
-        cout << "appending events" << endl;
+        cout << "appending events " << vec_eventData.size() / 1000 << "k" << endl;
     }
     
     last_tstamp = vec_eventData.back().ts;
@@ -196,6 +204,52 @@ void EventBundle::Append(std::vector<dvs_msgs::Event>& vec_eventData)
     //     cout << eventData.event[i].x << "," << eventData.event[i].y << endl;
     // cout << coord.topLeftCorner(2,5)  << endl; 
     // cout << coord_3d.topLeftCorner(3,5) << endl;
+}
+
+
+/**
+* \brief append eventData to event bundle, resize bundle.
+*/
+void EventBundle::Append(std::vector<dvs_msgs::Event>& vec_eventData, ros::Time first_tstamp_)
+{   
+    if(size == 0) 
+    {
+        // cout << "first appending events, "<< vec_eventData.size() << endl;
+        first_tstamp = first_tstamp_;
+        // abs_tstamp = eventData.time_stamp;
+    }
+    else
+    {
+        cout << "appending events " << vec_eventData.size() / 1000 << "k" << endl;
+    }
+    
+    last_tstamp = vec_eventData.back().ts;
+    
+    size_t old_size = size; 
+    size += vec_eventData.size(); 
+
+    coord.conservativeResize(2,size);
+    coord_3d.conservativeResize(3,size);
+    polar.conservativeResize(size);
+
+    time_delta.conservativeResize(size);
+    time_delta_rev.conservativeResize(size);  // not used 
+    
+    int counter = 0; 
+    for(const auto& i: vec_eventData)
+    {
+        // TODO sampler 
+
+        // x.push_back(i.x);
+        // y.push_back(i.y);
+        polar(old_size+counter) = i.polarity==0;
+
+        coord(0, old_size+counter) = i.x;
+        coord(1, old_size+counter) = i.y;
+        coord_3d(2,old_size+counter) = 1;
+        time_delta(old_size+counter) = (i.ts - first_tstamp).toSec();
+        counter++;
+    }
 }
 
 
@@ -268,6 +322,7 @@ void EventBundle::CopySize(const EventBundle& ref)
     coord.resize(2,size);
     coord_3d.resize(3,size);
     isInner.resize(size); 
-    
+
+    polar = ref.polar; 
 
 }

@@ -93,9 +93,9 @@ System::System(const string& yaml)
 
     // optimizeing 
     est_angleAxis = Eigen::Vector3d(0,0,0); // set to 0. 
-    int dims[] = {180,240,20};   // row, col, channels
+    int dims[] = {camera.height, camera.width, 20};   // row, col, channels
     cv_3D_surface_index = cv::Mat(3, dims, CV_32S);
-    cv_3D_surface_index_count = cv::Mat(180, 240, CV_32S);
+    cv_3D_surface_index_count = cv::Mat(camera.height, camera.width, CV_32S);
     
     // after processing 
     curr_undis_event_image = cv::Mat(camera.height,camera.width, CV_32F);
@@ -164,25 +164,7 @@ void System::undistortEvents()
     // cout << "------unditort events num:" << point_size <<  endl;
     // cout << "------undisotrt eventBundle cols " << eventBundle.coord.rows() << "," << eventBundle.coord.cols()  <<  endl;
     
-
-
-    // ros::Time t1 = ros::Time::now(), t2, t3; 
-    {   // time costy 
-        // vector<cv::Point2f> raw_event_points(point_size), undis_event_points(point_size);
-        // for(size_t i=0; i<point_size; ++i)
-        //     raw_event_points[i] = cv::Point2f(eventBundle.coord(0,i),eventBundle.coord(1,i));
-        // cv::undistortPoints(raw_event_points, undis_event_points, 
-        //         camera.cameraMatrix, camera.distCoeffs, cv::noArray(), camera.cameraMatrix);        
-        // // convert points to cv_mat 
-        // cv::Mat temp_mat = cv::Mat(undis_event_points); 
-        // temp_mat = temp_mat.reshape(1,point_size); // channel 1, row = 2
-        // cv::transpose(temp_mat, temp_mat);
-        
-        // // convert cv2eigen 
-        // event_undis_Bundle.CopySize(eventBundle); 
-        // cv::cv2eigen(temp_mat, event_undis_Bundle.coord); 
-        // cout << "undist 1 \n" << event_undis_Bundle.coord.topLeftCorner(2,5) <<endl;
-    }   
+ 
     // t2 = ros::Time::now(); 
     {
         event_undis_Bundle.CopySize(eventBundle); 
@@ -191,11 +173,10 @@ void System::undistortEvents()
             int x = int(eventBundle.coord(0,i)), y = int(eventBundle.coord(1,i));
             event_undis_Bundle.coord(0,i) = undist_mesh_x.at<float>(y, x);
             event_undis_Bundle.coord(1,i) = undist_mesh_y.at<float>(y, x);
-
+            
             // if(i<5)
             //     cout << "undist 2 " << undist_mesh_x.at<float>(y, x) << "," << undist_mesh_y.at<float>(y, x) <<endl;
         }
-
     }
     // t3 = ros::Time::now(); 
     // cout <<"undistor 1 " << (t2-t1).toSec() <<" undistort2 " << (t3-t2).toSec()<< endl;
@@ -210,6 +191,7 @@ void System::undistortEvents()
     getImageFromBundle(event_undis_Bundle, PlotOption::U16C3_EVNET_IMAGE_COLOR).convertTo(curr_undis_event_image, CV_32F);
     // cout << "success undistort events " << endl;
 }
+
 
 
 /**
@@ -438,7 +420,7 @@ void System::Run()
     
     // check current eventsize or event interval 
     double time_interval = (vec_vec_eventData[vec_vec_eventData_iter].back().ts - vec_vec_eventData[vec_vec_eventData_iter].front().ts).toSec();
-    if(time_interval < 0.003 || vec_vec_eventData[vec_vec_eventData_iter].size() < 3000)
+    if(time_interval < 0.001 || vec_vec_eventData[vec_vec_eventData_iter].size() < 3000)
     {
         cout << "no enough interval or num: " <<time_interval << ", "<< vec_vec_eventData[vec_vec_eventData_iter].size() << endl;
         eventBundle.Clear();
@@ -458,7 +440,7 @@ void System::Run()
     /* undistort events */ 
 
     t1 = ros::Time::now();
-        undistortEvents();
+        undistortEvents(); // todo 如果是多次append这里undistort太多了，得该一改
     t2 = ros::Time::now();
     total_undistort_time += (t2-t1).toSec();
     // cout << "undistortEvents time " <<total_undistort_time<< ", " << (t2-t1).toSec() << endl;  // 0.00691187 s
@@ -671,6 +653,7 @@ void System::visualize()
 
         // getWarpedEventImage(est_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);
         cv::imshow("curr_warpped_event_image", curr_warpped_event_image);
+        std::cout << "showing " << std::to_string(seq_count) << endl;
         // cv::imshow("curr_warpped_event_image_gt", curr_warpped_event_image_gt);
 
         // cv::imshow("curr_map_image", curr_map_image);

@@ -21,8 +21,8 @@ struct ResidualCostFunction
         const double delta_time_early, 
         const double delta_time_later, 
         const Eigen::Matrix3d& K, 
-        ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>* interpolator_early_ptr,
-        ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>* interpolator_later_ptr,
+        ceres::BiCubicInterpolator<ceres::Grid2D<double, 1>>* interpolator_early_ptr,
+        ceres::BiCubicInterpolator<ceres::Grid2D<double, 1>>* interpolator_later_ptr,
         cv::Mat& cv_earlier_timesurface, cv::Mat& cv_later_timesurface, 
         Eigen::Vector3d last_est_var):
             points_(points), delta_time_early_(delta_time_early), delta_time_later_(delta_time_later), 
@@ -43,7 +43,7 @@ struct ResidualCostFunction
         // {
         //     double value = 0;
         //     interpolator_ptr_->Evaluate(i, j,  &value);
-        //     image.at<float>(i,j) = value;
+        //     image.at<double>(i,j) = value;
         // }
         // cv::Mat image_color;
         // cv::normalize(image, image_color, 255, 0,   cv::NORM_MINMAX, CV_8UC1);  
@@ -164,15 +164,15 @@ struct ResidualCostFunction
         //     T later_dx = points_2D_later_T(0) - T(later_x_int);
         //     T later_dy = points_2D_later_T(1) - T(later_y_int);
 
-        //     T early_loss =  T(cv_earlier_timesurface_.at<float>(early_y_int,   early_x_int)   ) * (T(1)-early_dx) * (T(1)-early_dy) + 
-        //                     T(cv_earlier_timesurface_.at<float>(early_y_int+1, early_x_int)   ) * (T(1)-early_dx) * early_dy  +
-        //                     T(cv_earlier_timesurface_.at<float>(early_y_int,   early_x_int+1) ) * early_dx * (T(1)-early_dy) + 
-        //                     T(cv_earlier_timesurface_.at<float>(early_y_int+1, early_x_int+1) ) * early_dx * early_dy ;
+        //     T early_loss =  T(cv_earlier_timesurface_.at<double>(early_y_int,   early_x_int)   ) * (T(1)-early_dx) * (T(1)-early_dy) + 
+        //                     T(cv_earlier_timesurface_.at<double>(early_y_int+1, early_x_int)   ) * (T(1)-early_dx) * early_dy  +
+        //                     T(cv_earlier_timesurface_.at<double>(early_y_int,   early_x_int+1) ) * early_dx * (T(1)-early_dy) + 
+        //                     T(cv_earlier_timesurface_.at<double>(early_y_int+1, early_x_int+1) ) * early_dx * early_dy ;
 
-        //     T later_loss =  T(cv_later_timesurface_.at<float>(later_y_int,   later_x_int)  ) * (T(1)-later_dx) * (T(1)-later_dy) + 
-        //                     T(cv_later_timesurface_.at<float>(later_y_int+1, later_x_int)  ) * (T(1)-later_dx) * later_dy  +
-        //                     T(cv_later_timesurface_.at<float>(later_y_int,   later_x_int+1)) * later_dx * (T(1)-later_dy) + 
-        //                     T(cv_later_timesurface_.at<float>(later_y_int+1, later_x_int+1)) * later_dx * later_dy ;
+        //     T later_loss =  T(cv_later_timesurface_.at<double>(later_y_int,   later_x_int)  ) * (T(1)-later_dx) * (T(1)-later_dy) + 
+        //                     T(cv_later_timesurface_.at<double>(later_y_int+1, later_x_int)  ) * (T(1)-later_dx) * later_dy  +
+        //                     T(cv_later_timesurface_.at<double>(later_y_int,   later_x_int+1)) * later_dx * (T(1)-later_dy) + 
+        //                     T(cv_later_timesurface_.at<double>(later_y_int+1, later_x_int+1)) * later_dx * later_dy ;
 
         //     // cout << "bilinear " << early_loss << ", later " << later_loss << endl;
         //     residual[0] = early_loss + later_loss; 
@@ -189,8 +189,8 @@ struct ResidualCostFunction
         const double delta_time_early, 
         const double delta_time_later, 
         const Eigen::Matrix3d& K,
-        ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>* interpolator_early_ptr,
-        ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>* interpolator_later_ptr,
+        ceres::BiCubicInterpolator<ceres::Grid2D<double, 1>>* interpolator_early_ptr,
+        ceres::BiCubicInterpolator<ceres::Grid2D<double, 1>>* interpolator_later_ptr,
         cv::Mat& cv_earlier_timesurface, cv::Mat& cv_later_timesurface, 
         Eigen::Vector3d last_est_var)
         {
@@ -205,8 +205,8 @@ struct ResidualCostFunction
     double delta_time_early_, delta_time_later_;
     Eigen::Matrix3d intrisic_; 
 
-    ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>> *interpolator_early_ptr_;
-    ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>> *interpolator_later_ptr_;
+    ceres::BiCubicInterpolator<ceres::Grid2D<double, 1>> *interpolator_early_ptr_;
+    ceres::BiCubicInterpolator<ceres::Grid2D<double, 1>> *interpolator_later_ptr_;
     cv::Mat cv_earlier_timesurface_;
     cv::Mat cv_later_timesurface_;
     // Eigen::Matrix3Xd ang_vel_hat_mul_x, ang_vel_hat_sqr_mul_x;
@@ -246,16 +246,16 @@ void System::EstimateMotion_ransca_ceres()
          
         // double timesurface_range = iter_/50.0 + 0.2;  // original 
         // double timesurface_range = (iter_)/60.0 + 0.2;
-        double timesurface_range = ts_start + iter_/float(total_iter_num) * (ts_end-ts_start);  
-        cv::Mat cv_earlier_timesurface = cv::Mat(camera.height, camera.width, CV_32FC1); 
-        cv::Mat cv_later_timesurface =   cv::Mat(camera.height, camera.width, CV_32FC1); 
+        double timesurface_range = ts_start + iter_/double(total_iter_num) * (ts_end-ts_start);  
+        cv::Mat cv_earlier_timesurface = cv::Mat(camera.height, camera.width, CV_64FC1); 
+        cv::Mat cv_later_timesurface =   cv::Mat(camera.height, camera.width, CV_64FC1); 
 
 
         // cv::Mat visited_map = cv::Mat(180,240, CV_8U); visited_map.setTo(0);
-        float early_default_value = eventBundle.time_delta(int(eventBundle.size*timesurface_range));
+        double early_default_value = eventBundle.time_delta(int(eventBundle.size*timesurface_range));
         cv_earlier_timesurface.setTo(early_default_value * yaml_default_value_factor);
         // cout << "default early " << default_value << endl; 
-        float later_default_value = eventBundle.time_delta(eventBundle.size-1) - eventBundle.time_delta(int(eventBundle.size*(1-timesurface_range)));
+        double later_default_value = eventBundle.time_delta(eventBundle.size-1) - eventBundle.time_delta(int(eventBundle.size*(1-timesurface_range)));
         cv_later_timesurface.setTo(later_default_value * yaml_default_value_factor);
         // cout << "default later " << default_value << endl; 
 
@@ -290,7 +290,7 @@ void System::EstimateMotion_ransca_ceres()
 
             if(event_warpped_Bundle.isInner[i] < 1) continue;               // outlier 
             // linear add TODO improve to module 
-                cv_earlier_timesurface.at<float>(sampled_y, sampled_x) = eventBundle.time_delta(i);  
+                cv_earlier_timesurface.at<double>(sampled_y, sampled_x) = eventBundle.time_delta(i);  
         } 
     t2 = ros::Time::now();
     if(show_time_info)
@@ -304,25 +304,21 @@ void System::EstimateMotion_ransca_ceres()
             
             int sampled_x = std::round(event_warpped_Bundle.coord.col(i)[0]), sampled_y = std::round(event_warpped_Bundle.coord.col(i)[1]); 
 
+            
             if(event_warpped_Bundle.isInner[i] < 1) continue;               // outlier 
             // linear add TODO improve to module 
-                cv_later_timesurface.at<float>(sampled_y, sampled_x) = eventBundle.time_delta(event_warpped_Bundle.size-1) - eventBundle.time_delta(i);  
+                cv_later_timesurface.at<double>(sampled_y, sampled_x) = eventBundle.time_delta(event_warpped_Bundle.size-1) - eventBundle.time_delta(i);  
         } 
-
-        // for dynamic batch 
-        cv_early_timesurface_float_ = cv_earlier_timesurface.clone();
-        cv_later_timesurface_float_ = cv_later_timesurface.clone();
-
 
             /* visualize timesurface */  
             // {
                 
-            //     cv::Mat cv_earlier_timesurface_8U, cv_earlier_timesurface_color; 
-            //     cv::normalize(cv_earlier_timesurface, cv_earlier_timesurface_8U, 255, 0, cv::NORM_MINMAX , CV_8UC1 );
-            //     // cv_earlier_timesurface.convertTo(cv_earlier_timesurface_8U, CV_8UC1);
-            //     cv::applyColorMap(cv_earlier_timesurface_8U, cv_earlier_timesurface_color, cv::COLORMAP_JET);
-            //     cv::imshow("timesurface_early", cv_earlier_timesurface_color);
-            //     cv::waitKey(10);
+                // cv::Mat cv_earlier_timesurface_8U, cv_earlier_timesurface_color; 
+                // cv::normalize(cv_earlier_timesurface, cv_earlier_timesurface_8U, 255, 0, cv::NORM_MINMAX , CV_8UC1 );
+                // // cv_earlier_timesurface.convertTo(cv_earlier_timesurface_8U, CV_8UC1);
+                // cv::applyColorMap(cv_earlier_timesurface_8U, cv_earlier_timesurface_color, cv::COLORMAP_JET);
+                // cv::imshow("timesurface_early", cv_earlier_timesurface_color);
+                // cv::waitKey(10);
             // }
             // {
             //     // visualize timesurface 
@@ -337,25 +333,25 @@ void System::EstimateMotion_ransca_ceres()
         // add gaussian on cv_earlier_timesurface
         cv::Mat cv_earlier_timesurface_blur, cv_later_timesurface_blur;
         int gaussian_size = yaml_gaussian_size;
-        float sigma = yaml_gaussian_size_sigma;
+        double sigma = yaml_gaussian_size_sigma;
         cv::GaussianBlur(cv_earlier_timesurface, cv_earlier_timesurface_blur, cv::Size(gaussian_size, gaussian_size), sigma);
         cv::GaussianBlur(cv_later_timesurface, cv_later_timesurface_blur, cv::Size(gaussian_size, gaussian_size), sigma);
 
         // get timesurface in ceres 
     t1 = ros::Time::now();
-        // vector<float> line_grid_early; line_grid_early.assign((float*)cv_earlier_timesurface.data, (float*)cv_earlier_timesurface.data + 180*240);
-        // vector<float> line_grid_later; line_grid_later.assign((float*)cv_later_timesurface.data, (float*)cv_later_timesurface.data + 180*240);
+        // vector<double> line_grid_early; line_grid_early.assign((double*)cv_earlier_timesurface.data, (double*)cv_earlier_timesurface.data + 180*240);
+        // vector<double> line_grid_later; line_grid_later.assign((double*)cv_later_timesurface.data, (double*)cv_later_timesurface.data + 180*240);
         int pixel_count = camera.width * camera.height;
-        vector<float> line_grid_early; line_grid_early.assign((float*)cv_earlier_timesurface_blur.data, (float*)cv_earlier_timesurface_blur.data + pixel_count);
-        vector<float> line_grid_later; line_grid_later.assign((float*)cv_later_timesurface_blur.data, (float*)cv_later_timesurface_blur.data + pixel_count);
+        vector<double> line_grid_early; line_grid_early.assign((double*)cv_earlier_timesurface_blur.data, (double*)cv_earlier_timesurface_blur.data + pixel_count);
+        vector<double> line_grid_later; line_grid_later.assign((double*)cv_later_timesurface_blur.data, (double*)cv_later_timesurface_blur.data + pixel_count);
     t2 = ros::Time::now();
     if(show_time_info)
         cout << "convert inter time " << (t2-t1).toSec() << endl; // 0.000256303, using pointer reduce to 2.6943e-05
 
-        ceres::Grid2D<float,1> grid_early(line_grid_early.data(), 0, camera.height, 0, camera.width);
-        ceres::Grid2D<float,1> grid_later(line_grid_later.data(), 0, camera.height, 0, camera.width);
-        auto* interpolator_early_ptr = new ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>(grid_early);
-        auto* interpolator_later_ptr = new ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>(grid_later);  
+        ceres::Grid2D<double,1> grid_early(line_grid_early.data(), 0, camera.height, 0, camera.width);
+        ceres::Grid2D<double,1> grid_later(line_grid_later.data(), 0, camera.height, 0, camera.width);
+        auto* interpolator_early_ptr = new ceres::BiCubicInterpolator<ceres::Grid2D<double, 1>>(grid_early);
+        auto* interpolator_later_ptr = new ceres::BiCubicInterpolator<ceres::Grid2D<double, 1>>(grid_later);  
 
         // sample events 
         // select 100 random points, and warp delta_t < min(t_point_delta_t). 
@@ -364,7 +360,6 @@ void System::EstimateMotion_ransca_ceres()
         std::vector<int> vec_sampled_idx; 
         int samples_count = std::min(sample_num, int(eventBundle.size)); 
         getSampledVec(vec_sampled_idx, samples_count, 0, 1);
-        // getSampledVecUniform(vec_sampled_idx, samples_count, 0, 1);
     t2 = ros::Time::now();
     if(show_time_info)
         cout << "getSampledVec time " << (t2-t1).toSec() << endl; // 0.000473817
@@ -386,8 +381,7 @@ void System::EstimateMotion_ransca_ceres()
                                                     interpolator_early_ptr, interpolator_later_ptr,
                                                     cv_earlier_timesurface, cv_later_timesurface, 
                                                     last_est_var);
-            // ceres::LossFunction *loss_function = new ceres::CauchyLoss(0.1);
-            // problem.AddResidualBlock(cost_function, loss_function, &angleAxis[0]);
+
             problem.AddResidualBlock(cost_function, nullptr, &angleAxis[0]);
         }
     t2 = ros::Time::now();
@@ -425,15 +419,18 @@ void System::EstimateMotion_ransca_ceres()
             problem.Evaluate(ceres::Problem::EvaluateOptions(), &cost, &residual_vec, nullptr, nullptr);
             double residual_sum_0 = std::accumulate(residual_vec.begin(), residual_vec.end(), 0.0);
 
-            if(residual_sum_old < residual_sum_0) // todo test if true
+            if(residual_sum_old < residual_sum_0)
             {
-                std::cout << "using old velocity" << std::endl;
                 angleAxis[0] = est_angleAxis(0); 
                 angleAxis[1] = est_angleAxis(1);
                 angleAxis[1] = est_angleAxis(2);  
+                cout <<"old new para" << endl;
             }
-            else 
-                std::cout << "using new velocity" << std::endl;
+            else
+            {
+                cout <<"using new para 0 0 0 " << endl;
+
+            }
             
             // cout << "using " << angleAxis[0] << "," << angleAxis[1] << "," << angleAxis[2] 
             // << ", residual size " << residual_vec.size() << ", sum_0: "<<  residual_sum_0 << ", sum_old: " <<residual_sum_old << endl; 

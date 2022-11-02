@@ -165,18 +165,29 @@ add_executable(${PROJECT_NAME}_node
         src/rotation_estimator_node.cpp 
         # src/callbacks.cpp
         src/database.cpp
-        src/system.cpp
+        # src/system.cpp
+        src/system_dynamic.cpp
         src/numerics.cpp
         src/system_estimate.cpp                 # store utils for motion estimation  
         # src/system_estimate_ransca.cpp          # ransac method with self defined gradient function, RMSPros
         # src/system_estimate_CM_ceres.cpp
         # src/system_estimate_PPP_ceres.cpp
-        src/system_estimate_ransac_doublewarp_ceres.cpp  # timesurface method with double warp using ceres
+        # src/system_estimate_ransac_doublewarp_ceres.cpp  # timesurface method with double warp using ceres
+        # src/system_estimate_ransac_doublewarp_ceres_dyna_batch.cpp  # timesurface method with double warp using ceres
+        # src/system_estimate_ransac_middlewarp_ceres.cpp
+        # src/system_estimate_ransac_doublewarp_ceres_dresolu.cpp  # timesurface method with double warp using ceres
+        # src/system_estimate_ransac_doublewarp_ceres_accle.cpp
+        # src/system_estimate_ransac_doublewarp_ceres_uniform.cpp
+        # src/system_estimate_ransac_doublewarp_ceres_doubleprecision.cpp  # timesurface method with double warp using ceres
         # src/system_estimate_ransac_singlewarp_ceres.cpp  # timesurface method with double warp using ceres
+        src/system_estimate_ransac_singlewarp_ceres_dyna_batch.cpp
+        # src/system_estimate_ransac_doublewarp_ceres_norm.cpp
         # src/system_estimate_ransac_singlewarp_ceres_RT.cpp  # timesurface method with double warp using ceres
         # src/system_estimate_ransac_ceres_one.cpp       # one loss of ceres
-        src/system_evaluate_runtime.cpp
-        src/system_estimate_kim.cpp
+        # src/system_estimate_ransac_polar_singlewarp_ceres.cpp
+        # src/system_estimate_ransac_singlewarp_ceres_uniform.cpp
+        # src/system_evaluate_runtime.cpp
+        # src/system_estimate_kim.cpp
         )            # using kim method with self defined gradient function, R
 
 ## Rename C++ executable without prefix

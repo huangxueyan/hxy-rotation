@@ -24,26 +24,6 @@ struct ResidualCostFunction
             points_(points), delta_time_early_(delta_time_early), 
             intrisic_(K), interpolator_early_ptr_(interpolator_early_ptr)
     {
-        // cout << "CM loss init :" << endl;
-        
-        // init timesurface and its surface 
-        // Eigen::Matrix<double,3,-1> new_coord_3d;
-        // warp<double>(ag_vec.data(), new_coord_3d);
-
-        // cv::Mat image = cv::Mat::zeros({240,180}, CV_32FC1);
-        // for(int i=0; i< 180; i++)
-        // for(int j=0; j< 240; j++)
-        // {
-        //     double value = 0;
-        //     interpolator_ptr_->Evaluate(i, j,  &value);
-        //     image.at<float>(i,j) = value;
-        // }
-        // cv::Mat image_color;
-        // cv::normalize(image, image_color, 255, 0,   cv::NORM_MINMAX, CV_8UC1);  
-        // cv::applyColorMap(image_color, image_color, cv::COLORMAP_JET);
-        // cv::imshow("mage " , image_color);
-        // cv::waitKey(2000);
-
     }
 
     // operator 
@@ -156,7 +136,7 @@ void System::EstimateMotion_ransca_ceres()
     double residuals; 
     // est_angleAxis = Eigen::Vector3d::Zero();
     double angleAxis[3] = {est_angleAxis(0), est_angleAxis(1), est_angleAxis(2)}; 
-    
+    Eigen::Vector3d last_est_angleAxis = est_angleAxis;
     for(int iter_= 1; iter_<= total_iter_num; iter_++)
     {
         // get timesurface earlier 
@@ -176,12 +156,9 @@ void System::EstimateMotion_ransca_ceres()
         double timesurface_range = ts_start + iter_/float(total_iter_num) * (ts_end-ts_start);  
         cv::Mat cv_earlier_timesurface = cv::Mat(camera.height, camera.width, CV_32FC1); 
 
-        // cv::Mat visited_map = cv::Mat(180,240, CV_8U); visited_map.setTo(0);
         float early_default_value = eventBundle.time_delta(int(eventBundle.size*timesurface_range));
         cv_earlier_timesurface.setTo(early_default_value * yaml_default_value_factor);
         // cout << "default early " << default_value << endl; 
-
-        
 
         // visual optimizng process 
         // if(iter_ % 2  == 0) 
@@ -204,44 +181,16 @@ void System::EstimateMotion_ransca_ceres()
 
             if(event_warpped_Bundle.isInner[i] < 1) continue;               // outlier 
             // linear add TODO improve to module 
-                cv_earlier_timesurface.at<float>(sampled_y, sampled_x) = eventBundle.time_delta(i);  
+            cv_earlier_timesurface.at<float>(sampled_y, sampled_x) = eventBundle.time_delta(i);  
         } 
+        cv_early_timesurface_float_ = cv_earlier_timesurface.clone();
+
 
         // add gaussian on cv_earlier_timesurface
         cv::Mat cv_earlier_timesurface_blur;
         int gaussian_size = yaml_gaussian_size;
         float sigma = yaml_gaussian_size_sigma;
         cv::GaussianBlur(cv_earlier_timesurface, cv_earlier_timesurface_blur, cv::Size(gaussian_size, gaussian_size), sigma);
-
-
-        // 重新赋予最新的时间辍，最晚的一定会被覆盖
-        // for(int i = event_warpped_Bundle.size*0.1; i >=0; i--)
-        // {
-            
-        //     int sampled_x = std::round(event_warpped_Bundle.coord.col(i)[0]), sampled_y = std::round(event_warpped_Bundle.coord.col(i)[1]); 
-
-        //     if(event_warpped_Bundle.isInner[i] < 1) continue;               // outlier 
-        //     // linear add TODO improve to module 
-        //         cv_earlier_timesurface_blur.at<float>(sampled_y, sampled_x) = eventBundle.time_delta(i);  
-        // } 
-
-       /* visualize timesurface */  
-        // {
-            // cv::Mat cv_earlier_timesurface_8U, cv_earlier_timesurface_color; 
-            // cv::normalize(cv_earlier_timesurface, cv_earlier_timesurface_8U, 255, 0, cv::NORM_MINMAX , CV_8UC1 );
-            // // cv_earlier_timesurface.convertTo(cv_earlier_timesurface_8U, CV_8UC1);
-            // cv::applyColorMap(cv_earlier_timesurface_8U, cv_earlier_timesurface_color, cv::COLORMAP_JET);
-            // cv::namedWindow("timesurface_early", cv::WINDOW_NORMAL);
-            // cv::imshow("timesurface_early", cv_earlier_timesurface_color);   
-            
-            // cv::normalize(cv_earlier_timesurface_blur, cv_earlier_timesurface_8U, 255, 0, cv::NORM_MINMAX , CV_8UC1 );
-            // // cv_earlier_timesurface.convertTo(cv_earlier_timesurface_8U, CV_8UC1);
-            // cv::applyColorMap(cv_earlier_timesurface_8U, cv_earlier_timesurface_color, cv::COLORMAP_JET);
-            // cv::namedWindow("timesurfaceblur_early", cv::WINDOW_NORMAL);
-            // cv::imshow("timesurfaceblur_early", cv_earlier_timesurface_color);
-            // cv::waitKey(0);
-        // }
-
 
     t2 = ros::Time::now(); 
     total_timesurface_time += (t2-t1).toSec();
@@ -259,7 +208,8 @@ void System::EstimateMotion_ransca_ceres()
         // select 100 random points, and warp delta_t < min(t_point_delta_t). 
         // accumulate all time difference before and after warpped points. 
         std::vector<int> vec_sampled_idx; 
-        int samples_count = std::min(sample_num, int(eventBundle.size)); 
+        // int samples_count = std::min(sample_num, int(eventBundle.size)); 
+        int samples_count = std::min(sample_num, int(eventBundle.size * 0.8)); 
         getSampledVec(vec_sampled_idx, samples_count, 0, 1);
 
         // init problem 
@@ -297,7 +247,8 @@ void System::EstimateMotion_ransca_ceres()
         ceres::Solver::Summary summary; 
 
         // evaluate: choose init velocity, test whether using last_est or {0,0,0},
-        if(iter_ == 1)
+        // if(iter_ == 1)
+        if (false)
         {
             double cost = 0;
             vector<double> residual_vec; 
@@ -323,72 +274,114 @@ void System::EstimateMotion_ransca_ceres()
         ceres::Solve(options, &problem, &summary);
     t2 = ros::Time::now();
     total_ceres_time += (t2-t1).toSec();
-        // cout << summary.BriefReport() << endl;
 
-        // cout << "   iter " << iter_ << ", ceres iters " << summary.iterations.size()<< endl;
-        // if(summary.BriefReport().find("NO_CONVERGENCE") != std::string::npos)
-        // {
-        //     cout << "   iter " << iter_ <<  ", No convergence Event bundle time " << eventBundle.first_tstamp.toSec() <<", size " << eventBundle.size << endl;
-        //     // cout << summary.BriefReport() << endl;
+
+        // Eigen::Vector3d temp_vel = Eigen::Vector3d(angleAxis[0],angleAxis[1],angleAxis[2]);
+        // if (last_est_angleAxis.norm()!=0 && (last_est_angleAxis - temp_vel).norm() > 1.0) {
+        //     cout << "failuer solved" << endl;
+        //     angleAxis[0] = 0;
+        //     angleAxis[1] = 0;
+        //     angleAxis[2] = 0;
+        //     last_est_angleAxis.setZero();
         // }
+        // last_est_angleAxis = temp_vel;
 
-        // {   // visualize hot map 
+        // if (iter_ == total_iter_num - 1) {
+        if (false) {
+            // get gt velocity 
+            double residual_sum = 0, cost = 0;
+            int samples_count = 3000;
 
-        //     // cout << "using angle axis " << est_angleAxis.transpose() << endl;
-        //     // visualize warp events and get a timesurface image with indexs 
-        //     {
-        //         cv::Mat cv_timesurface; 
-        //         cv_timesurface = getImageFromBundle(event_undis_Bundle, PlotOption::TIME_SURFACE);  
-        //         cv::normalize(cv_timesurface, hot_image_C1, 0,255, cv::NORM_MINMAX, CV_8UC1);
-        //         cv::cvtColor(hot_image_C1, hot_image_C3, cv::COLOR_GRAY2BGR);
-        //     }
-
-        //     int sample_green = 1;
-        //     for(int i=0; i<vec_sampled_idx.size() ; i++)
-        //     {
-        //         // if(i<10) cout << "sampling " << sample_idx << endl;
-
-        //         // viusal sample 
-        //         if(i%sample_green != 0) continue;
-        //         int x = int(event_undis_Bundle.coord(0, vec_sampled_idx[i]));
-        //         int y = int(event_undis_Bundle.coord(1, vec_sampled_idx[i]));
-        //         if(x>239 || y>179 || x<0 ||y<0) continue;
-        //         hot_image_C3.at<cv::Vec3b>(y,x) = cv::Vec3b(0,255,0);   // green of events before warp 
-        //     }
-
-        //     // compare with gt
-        //     // cout << "estimated angleAxis " <<  est_angleAxis.transpose() << endl;   
+            Eigen::Vector3d eg_angleAxis(angleAxis);
             
-        //     // plot earlier timestamps oringe 22，G：07，B：201
-        //     for(int i=0; i<eventBundle.size/15 ; i++)
-        //     {
-        //         // viusal sample 
-        //         // cout << "hello " << endl;
-        //         if(i%sample_green != 0) continue;
-        //         int x = int(event_undis_Bundle.coord(0, i));
-        //         int y = int(event_undis_Bundle.coord(1, i));
-        //         if(x>239 || y>179 || x<0 ||y<0) continue;
-        //         hot_image_C3.at<cv::Vec3b>(y,x) = cv::Vec3b(0, 165, 255);   // bottom events earlier  
-        //     }
+            EventBundle my_warpped_Bundle;
+            cv::Mat IMG;
+            getWarpedEventImage(eg_angleAxis, my_warpped_Bundle).convertTo(IMG, CV_32F);
+            // cv::imwrite("/home/hxy/Desktop/ECCV22-all/hxy-rotation/devel_release/hxy_" + std::to_string(seq_count) + "_warp.png", myimg);
+    
+            // add more residual s  
+            {
+                std::vector<int> vec_sampled; 
+                getSampledVec(vec_sampled, samples_count, 0, 0.3);
+                int outlier = 0;
+                for(int loop_temp =0; loop_temp < vec_sampled.size(); loop_temp++)
+                {
+                    int idx = vec_sampled[loop_temp];
+                    int sampled_x = std::round(my_warpped_Bundle.coord.col(idx)[0]);
+                    int sampled_y = std::round(my_warpped_Bundle.coord.col(idx)[1]); 
+                    if(my_warpped_Bundle.isInner[idx] < 1)               // outlier 
+                        outlier++;    
+                    else if (cv_earlier_timesurface.at<float>(sampled_y, sampled_x) - 0.0001 > eventBundle.time_delta(idx)) 
+                        outlier++;                      
+                }
 
-        //     // visualize est
-        //     int sample_red = 1;
-        //     for(int i=0; i<vec_sampled_idx.size(); i++)
-        //     {
-        //         // viusal sample 
-        //         if(i%sample_red != 0) continue;
-        //         int x = int(event_warpped_Bundle.coord(0, vec_sampled_idx[i])); 
-        //         int y = int(event_warpped_Bundle.coord(1, vec_sampled_idx[i]));
-        //         if(x>239 || y>179 || x<0 ||y<0) continue;
-        //         hot_image_C3.at<cv::Vec3b>(y,x) = cv::Vec3b(0,0,255);   // red after warp
-        //         // cout << "all inlier red" << endl;
-        //     }
-        // }
+                cout << "0.-0.3 sample " << samples_count << ", outlier count " << outlier << ", rate " << 100 * outlier / float(samples_count) << "%"<< endl;
+             }
+
+            // add more residual s 
+            {
+                std::vector<int> vec_sampled; 
+                getSampledVec(vec_sampled, samples_count, 0.3, 0.5);
+                int outlier = 0;
+                for(int loop_temp =0; loop_temp < vec_sampled.size(); loop_temp++)
+                {
+                    int idx = vec_sampled[loop_temp];
+                    int sampled_x = std::round(my_warpped_Bundle.coord.col(idx)[0]);
+                    int sampled_y = std::round(my_warpped_Bundle.coord.col(idx)[1]); 
+                    if(my_warpped_Bundle.isInner[idx] < 1)               // outlier 
+                        outlier++;    
+                    else if (cv_earlier_timesurface.at<float>(sampled_y, sampled_x) - 0.0001 > eventBundle.time_delta(idx)) 
+                        outlier++;                        
+                }
+
+                cout << "0.3-0.5 sample " << samples_count << ", outlier count " << outlier << ", rate " << 100 * outlier / float(samples_count) << "%"<< endl;
+            }
+
+            // add more residual s 
+            {
+                std::vector<int> vec_sampled; 
+                getSampledVec(vec_sampled, samples_count, 0.5, 0.8);
+                int outlier = 0;
+                for(int loop_temp =0; loop_temp < vec_sampled.size(); loop_temp++)
+                {
+                    int idx = vec_sampled[loop_temp];
+                    int sampled_x = std::round(my_warpped_Bundle.coord.col(idx)[0]);
+                    int sampled_y = std::round(my_warpped_Bundle.coord.col(idx)[1]); 
+                    if(my_warpped_Bundle.isInner[idx] < 1)               // outlier 
+                        outlier++;    
+                    else if (cv_earlier_timesurface.at<float>(sampled_y, sampled_x) - 0.0001 > eventBundle.time_delta(idx)) 
+                        outlier++;                       
+                }
+
+                cout << "0.5-0.8 sample " << samples_count << ", outlier count " << outlier << ", rate " << 100 * outlier / float(samples_count) << "%"<< endl;
+            }
+
+            // add more residual s 
+            {
+                std::vector<int> vec_sampled; 
+                getSampledVec(vec_sampled, samples_count, 0.8, 1.0);
+                int outlier = 0;
+                for(int loop_temp =0; loop_temp < vec_sampled.size(); loop_temp++)
+                {
+                    int idx = vec_sampled[loop_temp];
+                    int sampled_x = std::round(my_warpped_Bundle.coord.col(idx)[0]);
+                    int sampled_y = std::round(my_warpped_Bundle.coord.col(idx)[1]); 
+                    if(my_warpped_Bundle.isInner[idx] < 1)               // outlier 
+                        outlier++;    
+                    else if (cv_earlier_timesurface.at<float>(sampled_y, sampled_x) - 0.0001 > eventBundle.time_delta(idx)) 
+                        outlier++;                          
+                }
+
+                cout << "0.8-1.0 sample " << samples_count << ", outlier count " << outlier << ", rate " << 100 * outlier / float(samples_count) << "%"<< endl;
+            }
+        }
 
 
     }
 
     est_angleAxis = Eigen::Vector3d(angleAxis[0],angleAxis[1],angleAxis[2]);
+
+
     // cout << "Loss: " << 0 << ", est_angleAxis " << est_angleAxis.transpose() << endl;
 
 }
