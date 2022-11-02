@@ -61,15 +61,31 @@ public:
 // imgproc
     void Run();
     void undistortEvents();
+    void undistortEvents(EventBundle &ebin, EventBundle &ebout);
     cv::Mat getWarpedEventImage(const Eigen::Vector3d & temp_ang_vel,EventBundle& event_out,
         const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR, bool ref_t1 = false, float range=1); 
 
+    void getWarpedEventImage(EventBundle& eventIn, const Eigen::Vector3d & cur_ang_vel, EventBundle& event_out, bool later_warp = false);
+    double GetInsideRatioSingle(EventBundle& evin);
+    double GetInsideRatioDouble(EventBundle &evin);
+    
     void getWarpedEventPoints(const EventBundle& eventIn, EventBundle& eventOut,
         const Eigen::Vector3d& cur_ang_vel,  bool ref_t1=false, float range=1);
     cv::Mat getImageFromBundle(EventBundle& eventBundle,
         const PlotOption option = PlotOption::U16C3_EVNET_IMAGE_COLOR, float range=1);
 
-    void getMapImage(); 
+    // middle warp 
+    cv::Mat MiddlegetWarpedEventImage(const Eigen::Vector3d & cur_ang_vel, double middle_time, EventBundle& event_out, const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR);
+    void MiddlegetWarpedEventPoints(const EventBundle& eventIn, EventBundle& eventOut, const Eigen::Vector3d& cur_ang_vel, double middle_time);
+
+    // acc 
+    cv::Mat getWarpedEventImageAcc(const Eigen::Matrix<double, 6, 1>& cur_ang_vel,EventBundle& event_out,
+        const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR, bool ref_t1 = false, float range=1); 
+    void getWarpedEventPointsAcc(const EventBundle& eventIn, EventBundle& eventOut,
+        const Eigen::Matrix<double, 6, 1>& cur_ang_vel,  bool ref_t1=false, float range=1);
+
+
+    // void getMapImage(); 
 
 // optimize
     void localCM(); 
@@ -105,6 +121,7 @@ public:
     //     const std::vector<int>& vec_sampled_idx, double warp_time, double& residuals);
 
     void getSampledVec(vector<int>& vec_sampled_idx, int samples_count, double sample_start, double sample_end);
+    void getSampledVecUniform(vector<int>& vec_sampled_idx, int samples_count, double sample_start, double sample_end);
     
 // visualize 
     void visualize();
@@ -130,10 +147,25 @@ public:
     // std::mutex que_vec_eventData_mutex;
 
 private:
+    cv::Mat cv_later_timesurface_float_;
+    cv::Mat cv_early_timesurface_float_; // used for dynamic batchsize
+    double last_merge_ratio_;
+    // dynamic batch para 
+    bool init_flag_ = true;
+    double time_length_;
+    int batch_length_;
+    double outlier_ratio_;
+    int invalid_merge_count = 0;
+    int invalid_time_count = 0;
+    int invalid_batch_count = 0;
+    int valid_merge_count = 0;
+    double t_threshold_ = 0;
+
 
 // configration 
     string yaml;  
-    int   yaml_iter_num;
+    int yaml_iter_num;
+    int yaml_iter_num_final;
     float yaml_ts_start;
     float yaml_ts_end;
     int   yaml_sample_count;
