@@ -40,26 +40,26 @@ struct ResidualCostFunction
         // taylor first : points * skew_matrix
 
         {   // first order version 
-            // delta_points_T(0) = -ag[2]*T(points_(1)) + ag[1]*T(points_(2));  
-            // delta_points_T(1) =  ag[2]*T(points_(0)) - ag[0]*T(points_(2));
-            // delta_points_T(2) = -ag[1]*T(points_(0)) + ag[0]*T(points_(1));
-            // points_early_T(0) = T(points_(0)) + delta_points_T(0)*T(delta_time_early_) ;
-            // points_early_T(1) = T(points_(1)) + delta_points_T(1)*T(delta_time_early_) ;
-            // points_early_T(2) = T(points_(2)) + delta_points_T(2)*T(delta_time_early_) ;
+            delta_points_T(0) = -ag[2]*T(points_(1)) + ag[1]*T(points_(2));  
+            delta_points_T(1) =  ag[2]*T(points_(0)) - ag[0]*T(points_(2));
+            delta_points_T(2) = -ag[1]*T(points_(0)) + ag[0]*T(points_(1));
+            points_early_T(0) = T(points_(0)) + delta_points_T(0)*T(delta_time_early_) ;
+            points_early_T(1) = T(points_(1)) + delta_points_T(1)*T(delta_time_early_) ;
+            points_early_T(2) = T(points_(2)) + delta_points_T(2)*T(delta_time_early_) ;
         }
 
         // taylor second : points * skew_matrix * skew_matrix
         {   // second order version
-            delta_points_T(0) = -ag[2]*T(points_(1)) + ag[1]*T(points_(2));  
-            delta_points_T(1) =  ag[2]*T(points_(0)) - ag[0]*T(points_(2));
-            delta_points_T(2) = -ag[1]*T(points_(0)) + ag[0]*T(points_(1));
-            delta_second_points_T(0) = -ag[2]*delta_points_T(1) + ag[1]*delta_points_T(2);
-            delta_second_points_T(1) =  ag[2]*delta_points_T(0) - ag[0]*delta_points_T(2);
-            delta_second_points_T(2) = -ag[1]*delta_points_T(0) + ag[0]*delta_points_T(1);
+            // delta_points_T(0) = -ag[2]*T(points_(1)) + ag[1]*T(points_(2));  
+            // delta_points_T(1) =  ag[2]*T(points_(0)) - ag[0]*T(points_(2));
+            // delta_points_T(2) = -ag[1]*T(points_(0)) + ag[0]*T(points_(1));
+            // delta_second_points_T(0) = -ag[2]*delta_points_T(1) + ag[1]*delta_points_T(2);
+            // delta_second_points_T(1) =  ag[2]*delta_points_T(0) - ag[0]*delta_points_T(2);
+            // delta_second_points_T(2) = -ag[1]*delta_points_T(0) + ag[0]*delta_points_T(1);
 
-            points_early_T(0) = T(points_(0)) + delta_points_T(0)*T(delta_time_early_) + delta_second_points_T(0)*T(0.5*delta_time_early_*delta_time_early_);
-            points_early_T(1) = T(points_(1)) + delta_points_T(1)*T(delta_time_early_) + delta_second_points_T(1)*T(0.5*delta_time_early_*delta_time_early_);
-            points_early_T(2) = T(points_(2)) + delta_points_T(2)*T(delta_time_early_) + delta_second_points_T(2)*T(0.5*delta_time_early_*delta_time_early_);
+            // points_early_T(0) = T(points_(0)) + delta_points_T(0)*T(delta_time_early_) + delta_second_points_T(0)*T(0.5*delta_time_early_*delta_time_early_);
+            // points_early_T(1) = T(points_(1)) + delta_points_T(1)*T(delta_time_early_) + delta_second_points_T(1)*T(0.5*delta_time_early_*delta_time_early_);
+            // points_early_T(2) = T(points_(2)) + delta_points_T(2)*T(delta_time_early_) + delta_second_points_T(2)*T(0.5*delta_time_early_*delta_time_early_);
         }
    
         {  // exactly version 
@@ -148,7 +148,8 @@ void System::EstimateMotion_ransca_ceres()
         
     t1 = ros::Time::now();
         // get t0 time surface of warpped image using latest angleAxis
-        getWarpedEventImage(eg_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);  // get latest warpped events 
+        // getWarpedEventImage(eg_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);  // get latest warpped events 
+        getWarpedEvent(event_undis_Bundle, eg_angleAxis, event_warpped_Bundle, false);
     t2 = ros::Time::now();
     total_warpevents_time += (t2-t1).toSec(); 
 
@@ -174,15 +175,19 @@ void System::EstimateMotion_ransca_ceres()
 
 
         // get early timesurface
-        for(int i= event_warpped_Bundle.size*timesurface_range; i >=0; i--)
+        t1 = ros::Time::now();
+        for(int i = event_warpped_Bundle.size*timesurface_range; i >=0; i--)
         {
             
             int sampled_x = std::round(event_warpped_Bundle.coord.col(i)[0]), sampled_y = std::round(event_warpped_Bundle.coord.col(i)[1]); 
 
             if(event_warpped_Bundle.isInner[i] < 1) continue;               // outlier 
             // linear add TODO improve to module 
-            cv_earlier_timesurface.at<float>(sampled_y, sampled_x) = eventBundle.time_delta(i);  
+            float* row_ptr = cv_earlier_timesurface.ptr<float>(sampled_y);
+            row_ptr[sampled_x] = eventBundle.time_delta(i);
+            // cv_earlier_timesurface.at<float>(sampled_y, sampled_x) = eventBundle.time_delta(i);  
         } 
+        // need for dynamic size 
         cv_early_timesurface_float_ = cv_earlier_timesurface.clone();
 
 

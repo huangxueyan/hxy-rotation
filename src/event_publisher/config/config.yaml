@@ -16,7 +16,6 @@ groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/poster_rotation/events.t
 # groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/boxes_rotation/events.txt"
 # groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/dynamic_rotation/events.txt"
 
-# groundtruth_dir: "/home/hxy/Desktop/Event-ST-PPP/dataset/dynamic_rotation/events.txt"
 
 # 2.7e7~3.1e7 for dynamic 
 # 5.7e6~5.9e6 for shapes 

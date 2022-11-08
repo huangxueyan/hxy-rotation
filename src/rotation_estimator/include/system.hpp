@@ -47,6 +47,7 @@ public:
 
 // ros msg 
     void pushEventData(const std::vector<dvs_msgs::Event>& ros_vec_event);
+    void pushEventData(const std::vector<dvs_msgs::Event> &ros_vec_event, int count); //RT + dynamic version
     void pushimageData(const ImageData& imageData); 
     void pushPoseData(const PoseData& poseData);
     void updateEventBundle();  // use less
@@ -63,27 +64,16 @@ public:
     void undistortEvents();
     void undistortEvents(EventBundle &ebin, EventBundle &ebout);
     cv::Mat getWarpedEventImage(const Eigen::Vector3d & temp_ang_vel,EventBundle& event_out,
-        const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR, bool ref_t1 = false, float range=1); 
+        const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR, bool ref_t1 = false); 
 
-    void getWarpedEventImage(EventBundle& eventIn, const Eigen::Vector3d & cur_ang_vel, EventBundle& event_out, bool later_warp = false);
+    void getWarpedEvent(EventBundle& eventIn, const Eigen::Vector3d & cur_ang_vel, EventBundle& event_out, bool later_warp = false);
     double GetInsideRatioSingle(EventBundle& evin);
     double GetInsideRatioDouble(EventBundle &evin);
     
     void getWarpedEventPoints(const EventBundle& eventIn, EventBundle& eventOut,
-        const Eigen::Vector3d& cur_ang_vel,  bool ref_t1=false, float range=1);
+        const Eigen::Vector3d& cur_ang_vel,  bool ref_t1=false);
     cv::Mat getImageFromBundle(EventBundle& eventBundle,
-        const PlotOption option = PlotOption::U16C3_EVNET_IMAGE_COLOR, float range=1);
-
-    // middle warp 
-    cv::Mat MiddlegetWarpedEventImage(const Eigen::Vector3d & cur_ang_vel, double middle_time, EventBundle& event_out, const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR);
-    void MiddlegetWarpedEventPoints(const EventBundle& eventIn, EventBundle& eventOut, const Eigen::Vector3d& cur_ang_vel, double middle_time);
-
-    // acc 
-    cv::Mat getWarpedEventImageAcc(const Eigen::Matrix<double, 6, 1>& cur_ang_vel,EventBundle& event_out,
-        const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR, bool ref_t1 = false, float range=1); 
-    void getWarpedEventPointsAcc(const EventBundle& eventIn, EventBundle& eventOut,
-        const Eigen::Matrix<double, 6, 1>& cur_ang_vel,  bool ref_t1=false, float range=1);
-
+        const PlotOption option = PlotOption::U16C3_EVNET_IMAGE_COLOR);
 
     // void getMapImage(); 
 
@@ -94,7 +84,6 @@ public:
     void EstimateMotion_CM_ceres();
     void EstimateMotion_PPP_ceres();
     void EstimateMotion_ransca_ceres();
-    void EstimateMotion_ransca_ceres_RT();
     void EstimateMotion_KS_ceres();
 
     void EstimateRunTime_CM();
@@ -137,6 +126,7 @@ public:
             total_readevents_time, 
             total_eventbundle_time, 
             total_warpevents_time;
+    int total_processing_events = 0;
 
 
     // bool inline checkEmpty(){return que_vec_eventData.empty();}

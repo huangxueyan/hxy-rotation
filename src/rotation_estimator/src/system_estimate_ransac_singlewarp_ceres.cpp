@@ -168,7 +168,8 @@ void System::EstimateMotion_ransca_ceres()
         
     t1 = ros::Time::now();
         // get t0 time surface of warpped image using latest angleAxis
-        getWarpedEventImage(eg_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);  // get latest warpped events 
+        // getWarpedEventImage(eg_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);  // get latest warpped events 
+        getWarpedEventImage(eg_angleAxis, event_warpped_Bundle);
     t2 = ros::Time::now();
     total_warpevents_time += (t2-t1).toSec(); 
 

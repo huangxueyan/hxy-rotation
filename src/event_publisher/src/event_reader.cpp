@@ -241,7 +241,7 @@ void Event_reader::publish()
 
         if(store2txt)
         {
-            est_velocity_file = fstream("/home/hxy/Desktop/hxy-rotation/data/seg_events/seg_start_" + 
+            est_velocity_file = fstream("/home/hxy/Desktop/ECCV22-all/hxy-rotation/data/seg_events/seg_start_" + 
                     std::to_string(count_pos) + ".txt", ios::out);
         }
 
@@ -262,9 +262,10 @@ void Event_reader::publish()
             current_size++;
             count_pos++;
         }
-
-        est_velocity_file.close(); 
-
+        if(store2txt)
+        {
+            est_velocity_file.close(); 
+        }
     } 
     else // fixed interval 
     {

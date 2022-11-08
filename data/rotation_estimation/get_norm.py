@@ -2,8 +2,8 @@ from matplotlib import markers
 import numpy as np
 import matplotlib.pyplot as plt 
 
-folder = "/home/hxy/Desktop/ECCV22-all/hxy-rotation/data/rotation_estimation/dynamic_rotation/"
-gt_filename = "second_order_size30k_double_warp_1500_timerange(0.8-0.8)_iter10_ceres10_gaussan5_sigma1.0_denoise4_defaultval1.0.txt"
+folder = "/home/hxy/Desktop/ECCV22-all/hxy-rotation/data/rotation_estimation/poster_rotation/"
+gt_filename = "221104_baset0.01_resetzero_final5_dynasize5k_double_warp_1000_outlier50_batchtime20ms_batchlength100_timerange(0.8-0.8)_iter1_ceres10_gaussan5_sigma1.0_denoise4.txt"
 imu_data = np.loadtxt(folder + gt_filename)
 
 # pre_value = np.array([0, 0, 0], dtype=np.float)

@@ -139,7 +139,7 @@ struct ResidualCostFunction
   \param [ts_start, ts_end]: time_range to form timesurface template  
   \param sample_num: the sample count beyond the time_range  
 */
-void System::EstimateMotion_ransca_ceres_RT()
+void System::EstimateMotion_ransca_ceres()
 {
     double ts_start = yaml_ts_start, ts_end = yaml_ts_end;
     int sample_num = yaml_sample_count, total_iter_num = yaml_iter_num;
@@ -148,7 +148,7 @@ void System::EstimateMotion_ransca_ceres_RT()
             << eventBundle.size << ", duration " << (eventBundle.last_tstamp - eventBundle.first_tstamp).toSec() 
             << ", sample " << sample_num << ", iter " << total_iter_num <<endl;
 
-    bool show_time_info = true;
+    bool show_time_info = false;
     // measure time 
     ros::Time t0, t1, t2; 
 
@@ -166,7 +166,7 @@ void System::EstimateMotion_ransca_ceres_RT()
          
         // double timesurface_range = ts_end;  // original 
         double timesurface_range = ts_start + iter_/float(total_iter_num) * (ts_end-ts_start);  
-        cv::Mat cv_earlier_timesurface = cv::Mat(180,240, CV_32FC1); 
+        cv::Mat cv_earlier_timesurface = cv::Mat(camera.height, camera.width, CV_32FC1); 
 
         // cv::Mat visited_map = cv::Mat(180,240, CV_8U); visited_map.setTo(0);
         float early_default_value = eventBundle.time_delta(int(eventBundle.size*timesurface_range));
@@ -174,36 +174,27 @@ void System::EstimateMotion_ransca_ceres_RT()
         // cout << "default early " << default_value << endl; 
 
         // get t0 time surface of warpped image using latest angleAxis
-        
-
-
         // get early timesurface in time range 
         t1 = ros::Time::now();
-        // getWarpedEventImage(eg_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3); 
-        getWarpedEventImage(eg_angleAxis, event_warpped_Bundle, PlotOption::U16C3_EVNET_IMAGE_COLOR, false, timesurface_range).convertTo(curr_warpped_event_image, CV_32FC3);
+        // getWarpedEventImage(eg_angleAxis, event_warpped_Bundle, PlotOption::U16C3_EVNET_IMAGE_COLOR, false);
+        getWarpedEvent(event_undis_Bundle, eg_angleAxis, event_warpped_Bundle, false);
         t2 = ros::Time::now();
         if(show_time_info)
-            cout << "getWarpedEventImage time " << (t2-t1).toSec() << endl;  // 0.00691187 s
-        for(int i= event_warpped_Bundle.size*timesurface_range; i >=0; i--)
+            cout << "getWarpedEvent time " << (t2-t1).toSec() << endl;  // 0.00691187 s
+        
+        t1 = ros::Time::now();
+        for(int i = event_warpped_Bundle.size*timesurface_range; i >=0; i--)
         {
             
             int sampled_x = std::round(event_warpped_Bundle.coord.col(i)[0]), sampled_y = std::round(event_warpped_Bundle.coord.col(i)[1]); 
 
             if(event_warpped_Bundle.isInner[i] < 1) continue;               // outlier 
             // linear add TODO improve to module 
-                cv_earlier_timesurface.at<float>(sampled_y, sampled_x) = eventBundle.time_delta(i);  
+            float* row_ptr = cv_earlier_timesurface.ptr<float>(sampled_y);
+            row_ptr[sampled_x] = eventBundle.time_delta(i);
+            // cv_earlier_timesurface.at<float>(sampled_y, sampled_x) = eventBundle.time_delta(i);  
         } 
-
-            /* visualize timesurface */  
-            // {
-                
-            //     cv::Mat cv_earlier_timesurface_8U, cv_earlier_timesurface_color; 
-            //     cv::normalize(cv_earlier_timesurface, cv_earlier_timesurface_8U, 255, 0, cv::NORM_MINMAX , CV_8UC1 );
-            //     // cv_earlier_timesurface.convertTo(cv_earlier_timesurface_8U, CV_8UC1);
-            //     cv::applyColorMap(cv_earlier_timesurface_8U, cv_earlier_timesurface_color, cv::COLORMAP_JET);
-            //     cv::imshow("timesurface_early", cv_earlier_timesurface_color);
-            //     cv::waitKey(10);
-            // }
+        // cv_early_timesurface_float_ = cv_earlier_timesurface.clone();
 
         // add gaussian on cv_earlier_timesurface
         cv::Mat cv_earlier_timesurface_blur;
@@ -212,21 +203,25 @@ void System::EstimateMotion_ransca_ceres_RT()
         cv::GaussianBlur(cv_earlier_timesurface, cv_earlier_timesurface_blur, cv::Size(gaussian_size, gaussian_size), sigma);
 
         // get timesurface in ceres 
-        vector<float> line_grid_early; line_grid_early.assign((float*)cv_earlier_timesurface_blur.data, (float*)cv_earlier_timesurface_blur.data + 180*240);
+        int pixel_count = camera.height * camera.width;
+        vector<float> line_grid_early; line_grid_early.assign((float*)cv_earlier_timesurface_blur.data, (float*)cv_earlier_timesurface_blur.data + pixel_count);
 
-        ceres::Grid2D<float,1> grid_early(line_grid_early.data(), 0, 180, 0, 240);
+        ceres::Grid2D<float,1> grid_early(line_grid_early.data(), 0, camera.height, 0, camera.width);
         auto* interpolator_early_ptr = new ceres::BiCubicInterpolator<ceres::Grid2D<float, 1>>(grid_early);
+    t2 = ros::Time::now();
+    if(show_time_info)
+        cout << "cv_earlier_timesurface time " << (t2-t1).toSec() << endl;  // 0.00691187 s
 
         // sample events 
         // select 100 random points, and warp delta_t < min(t_point_delta_t). 
         // accumulate all time difference before and after warpped points. 
     t1 = ros::Time::now();
         std::vector<int> vec_sampled_idx; 
-        int samples_count = std::min(sample_num, int(eventBundle.size)); 
+        int samples_count = std::min(sample_num, int(eventBundle.size * 0.8)); 
         getSampledVec(vec_sampled_idx, samples_count, 0, 1);
     t2 = ros::Time::now();
-    // if(show_time_info)
-    //     cout << "getSampledVec time " << (t2-t1).toSec() << endl; // 0.000473817
+    if(show_time_info)
+        cout << "getSampledVec time " << (t2-t1).toSec() << "count " << samples_count << endl; // 0.000473817
 
         // init problem 
         ceres::Problem problem; 
@@ -355,12 +350,9 @@ void System::EstimateMotion_ransca_ceres_RT()
         //         // cout << "all inlier red" << endl;
         //     }
         // }
-
-
     }
-
     est_angleAxis = Eigen::Vector3d(angleAxis[0],angleAxis[1],angleAxis[2]);
     // cout << "Loss: " << 0 << ", est_angleAxis " << est_angleAxis.transpose() << endl;
-
+    return;
 }
 

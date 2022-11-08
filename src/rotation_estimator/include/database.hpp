@@ -90,7 +90,7 @@ struct EventBundle{
     void Append(std::vector<dvs_msgs::Event>& vec_eventData);
     void Append(std::vector<dvs_msgs::Event>& vec_eventData, ros::Time first_tstamp_);
     void CopySize(const EventBundle& eb); 
-
+    void Copy(const EventBundle& ref, int count);
     void Clear(); 
     void DiscriminateInner(int widht, int height);
 

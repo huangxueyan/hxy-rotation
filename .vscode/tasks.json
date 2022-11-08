@@ -1,6 +1,12 @@
 {
     "tasks": [
         {
+            "type": "process",
+            "label": "python_source",
+            "command": "zsh",
+            "args": ["source /home/hxy/Desktop/ECCV22-all/hxy-rotation/devel_release/setup.zsh"]
+        },
+        {
             "type": "cppbuild",
             "label": "C/C++: g++-7 build active file",
             "command": "/usr/bin/g++-7",

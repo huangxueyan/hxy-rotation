@@ -91,7 +91,7 @@ int main(int argc, char** argv)
     
     double total_program_runtime = (ros::Time::now() - t1).toSec(); 
     cout << " total program time "<< total_program_runtime << endl;
-    cout << " total total_event_acquire_time "<< total_event_acquire_time << endl;
+    // cout << " total total_event_acquire_time "<< total_event_acquire_time << endl;
     // cout << " total read events time "<< sys->total_readevents_time << endl;
     cout << " total create event bundle time "<< sys->total_eventbundle_time << endl;
     cout << " total evaluate time "<< sys->total_evaluate_time << endl;
@@ -100,7 +100,7 @@ int main(int argc, char** argv)
     cout << " total ceres time "<< sys->total_ceres_time << endl;
     cout << " total undistort time "<< sys->total_undistort_time << endl;
     cout << " total visual time "<< sys->total_visual_time << endl;
-
+    cout << " total processsing events " << sys->total_processing_events / float(1e6) << " M evs" << endl;
     cout << "shutdown rotation estimator" << endl;
     return 0;
 }
