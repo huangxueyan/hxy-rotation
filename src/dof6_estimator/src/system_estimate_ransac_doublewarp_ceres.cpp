@@ -201,6 +201,7 @@ void System::EstimateMotion_ransca_ceres(double ts_start, double ts_end, int sam
             // linear add TODO improve to module 
                 cv_earlier_timesurface.at<float>(sampled_y, sampled_x) = eventBundle.time_delta(i);  
         } 
+        cv_early_timesurface_float_ = cv_earlier_timesurface.clone();
     t2 = ros::Time::now();
     if(show_time_info)
         cout << "cv_earlier_timesurface time " << (t2-t1).toSec() * 2 << endl; // 0.000106088
@@ -358,7 +359,7 @@ void System::EstimateMotion_ransca_ceres(double ts_start, double ts_end, int sam
         t1 = ros::Time::now();
         ceres::Solve(options, &problem, &summary);
         t2 = ros::Time::now();
-        // if(show_time_info)
+        if(show_time_info)
             cout << "   ceres time " << (t2-t1).toSec() << endl;  // 0.00383356 
         
         // cout << summary.BriefReport() << endl;

@@ -229,7 +229,7 @@ void System::EstimateMotion_ransca_ceres()
             << eventBundle.size << ", duration " << (eventBundle.last_tstamp - eventBundle.first_tstamp).toSec() 
             << ", sample " << sample_num << ", ts_start " << ts_start<<"~"<< ts_end << ", iter " << total_iter_num <<endl;
 
-    bool show_time_info = false;
+    bool show_time_info = true;
     // measure time 
     ros::Time t1, t2; 
 
@@ -410,9 +410,10 @@ void System::EstimateMotion_ransca_ceres()
         // problem.SetParameterUpperBound(&angleAxis[0],2, 20);
 
         ceres::Solver::Summary summary; 
+                std::cout << "iter_ == 1)" << std::endl;
 
         // evaluate: choose init velocity, test whether using last_est or {0,0,0},
-        if(iter_ == 1)
+        if(iter_ == 0)
         {
             double cost = 0;
             vector<double> residual_vec; 
@@ -438,6 +439,7 @@ void System::EstimateMotion_ransca_ceres()
             // cout << "using " << angleAxis[0] << "," << angleAxis[1] << "," << angleAxis[2] 
             // << ", residual size " << residual_vec.size() << ", sum_0: "<<  residual_sum_0 << ", sum_old: " <<residual_sum_old << endl; 
         }
+            cout << "start ceres optimization" << endl;  // 0.00383356 
 
 
         t1 = ros::Time::now();

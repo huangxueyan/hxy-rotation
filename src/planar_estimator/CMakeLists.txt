@@ -152,7 +152,8 @@ add_executable(${PROJECT_NAME}_node
         src/planar_estimator_node.cpp 
         src/callbacks.cpp
         src/database.cpp
-        src/system.cpp
+        # src/system.cpp
+        src/system_dynamic.cpp
         src/numerics.cpp
         src/system_estimate.cpp                 # store utils for motion estimation  
         # src/system_estimate_ransac_cos_ceres.cpp  # timesurface method with double warp using ceres

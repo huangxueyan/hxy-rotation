@@ -17,20 +17,21 @@ Version: 1.0
 #--------------------------------------------------------------------------------------------
 # Input Parameters
 #--------------------------------------------------------------------------------------------
-# groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/poster_6dof/events.txt"
+groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/poster_6dof/events.txt"
 # groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/poster_translation/events.txt"
 # groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/poster_hdr/events.txt"
-groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/simulation_3walls/events.txt"
+# groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/simulation_3walls/events.txt"
 
-# output_dir: "/home/hxy/Desktop/hxy-rotation/data/planar_estimation/poster_6dof/temp_single_inv_exactly_norm3d_size30k_"
-# output_dir: "/home/hxy/Desktop/hxy-rotation/data/planar_estimation/poster_translation/temp_new1_single_inv_exactly_norm3d_size30k_"
-# output_dir: "/home/hxy/Desktop/hxy-rotation/data/planar_estimation/poster_hdr/temp_single_inv_exactly_norm3d_size30k_"
-output_dir: "/home/hxy/Desktop/hxy-rotation/data/planar_estimation/simulation_3walls/single_inv_exactly_norm3d_size10k_"
+output_dir: "/home/hxy/Desktop/ECCV22-all/hxy-rotation/data/planar_estimation/poster_6dof/221115_dynamic_base5k_double_invexactly_norm3d_size5k_"
+# output_dir: "/home/hxy/Desktop/ECCV22-all/hxy-rotation/data/planar_estimation/poster_translation/221115_dynamic_base5k_double_invexactly_norm3d_size30k_"
+# output_dir: "/home/hxy/Desktop/ECCV22-all/hxy-rotation/data/planar_estimation/poster_hdr/221115_dynamic_base5k_double_invexactly_norm3d_size30k_"
+# output_dir: "/home/hxy/Desktop/hxy-rotation/data/planar_estimation/simulation_3walls/single_inv_exactly_norm3d_size10k_"
 
-yaml_sample_count: 3000
-yaml_iter_num: 10
+yaml_sample_count: 1000
+yaml_iter_num: 1
+yaml_iter_num_final: 2
 yaml_ceres_iter_num: 10
-yaml_ceres_iter_thread: 4
+yaml_ceres_iter_thread: 16
 yaml_ts_start: 0.8
 yaml_ts_end: 0.8
 yaml_denoise_num: 4
@@ -46,7 +47,7 @@ yaml_regulization_factor: 10
 read_start_lines: 0e4
 read_max_lines: 25000e4
 # read_start_lines: 100e4
-# read_max_lines:  250e4
+# read_max_lines:  200e4
 
 
 #--------------------------------------------------------------------------------------------
@@ -56,4 +57,9 @@ Event.delta_time: 0.01
 using_fixed_time: 0  # 1 means true
 
 fixed_interval: 0.02
-Event.bundle_size: 1e4 
+Event.bundle_size: 5e3 
+
+# for dynamic batch 
+yaml_outlier_ratio: 50
+yaml_time_length: 20
+yaml_batch_length: 50

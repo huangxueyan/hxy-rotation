@@ -61,6 +61,7 @@ public:
 // imgproc
     void Run();
     void undistortEvents();
+    void undistortEvents(EventBundle &ebin, EventBundle &ebout);
     cv::Mat getWarpedEventImage(const Eigen::Vector3d & temp_ang_vel, const Eigen::Vector3d& cur_trans_vel,const Eigen::Vector3d& cur_Nnorm_theta, EventBundle& event_out,
         const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR, bool ref_t1 = false); 
     // cv::Mat getWarpedEventImage(const Eigen::Vector3d & temp_ang_vel, const Eigen::Vector3d& cur_trans_vel,const Eigen::Vector2d& cur_Nnorm_theta, EventBundle& event_out,
@@ -75,6 +76,17 @@ public:
     cv::Mat getImageFromBundle(EventBundle& eventBundle,
         const PlotOption option = PlotOption::U16C3_EVNET_IMAGE_COLOR, bool is_mapping=false);
 
+    double GetInsideRatioSingle(EventBundle& evin);
+    cv::Mat cv_early_timesurface_float_;
+    int invalid_merge_count = 0;
+    int invalid_time_count = 0;
+    int invalid_batch_count = 0;
+    int valid_merge_count = 0;
+    double last_merge_ratio_;
+    double outlier_ratio_;
+    int yaml_iter_num_final;
+    double time_length_;
+    int batch_length_;
     // void getMapImage(); 
 
 // optimize
@@ -82,7 +94,7 @@ public:
 
     void EstimateMotion_kim();  
     void EstimateMotion_CM_ceres();
-    void EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_end, int sample_num, int total_iter_num);
+    void EstimateMotion_ransca_ceres(double ts_start, double ts_end, int sample_num, int total_iter_num);
     void EstimateMotion_ransca_samples_ceres(double sample_start, double sample_end);
     void EstimateMotion_KS_ceres();
     // void EstimateMotion_ransca_once(double sample_ratio, double warp_time_ratio, double opti_steps);
@@ -108,12 +120,21 @@ public:
 // visualize 
     void visualize();
 
-    double total_evaluate_time;
 
     // bool inline checkEmpty(){return que_vec_eventData.empty();}
 
 // file 
     bool inline file_opened() {return est_velocity_file.is_open();};
+
+    double total_evaluate_time, 
+            total_undistort_time, 
+            total_visual_time, 
+            total_timesurface_time, 
+            total_ceres_time, 
+            total_readevents_time, 
+            total_eventbundle_time, 
+            total_warpevents_time;
+    int total_processing_events = 0;
 
 
 // thread
@@ -160,8 +181,7 @@ private:
             curr_warpped_event_image_gt, // current sharp local event image using gt 
             curr_map_image,              // global image at t_curr view
             hot_image_C1,
-            hot_image_C3;                  // time surface with applycolormap
-// undistor parameter
+            hot_image_C3;              //     const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR, bool ref_t1 = false); 
     cv::Mat undist_mesh_x, undist_mesh_y;  
 
 // event data

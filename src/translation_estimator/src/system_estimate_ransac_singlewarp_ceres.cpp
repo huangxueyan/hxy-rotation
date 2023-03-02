@@ -336,12 +336,12 @@ void System::EstimateMotion_ransca_ceres()
             /* visualize timesurface */  
             // {
                 
-            //     cv::Mat cv_earlier_timesurface_8U, cv_earlier_timesurface_color; 
-            //     cv::normalize(cv_earlier_timesurface, cv_earlier_timesurface_8U, 255, 0, cv::NORM_MINMAX , CV_8UC1 );
-            //     // cv_earlier_timesurface.convertTo(cv_earlier_timesurface_8U, CV_8UC1);
-            //     cv::applyColorMap(cv_earlier_timesurface_8U, cv_earlier_timesurface_color, cv::COLORMAP_JET);
-            //     cv::imshow("timesurface_early", cv_earlier_timesurface_color);
-            //     cv::waitKey(10);
+                cv::Mat cv_earlier_timesurface_8U, cv_earlier_timesurface_color; 
+                cv::normalize(cv_earlier_timesurface, cv_earlier_timesurface_8U, 255, 0, cv::NORM_MINMAX , CV_8UC1 );
+                // cv_earlier_timesurface.convertTo(cv_earlier_timesurface_8U, CV_8UC1);
+                cv::applyColorMap(cv_earlier_timesurface_8U, cv_earlier_timesurface_color, cv::COLORMAP_JET);
+                cv::imshow("timesurface_early", cv_earlier_timesurface_color);
+                cv::waitKey(1000);
             // }
 
         // add gaussian on cv_earlier_timesurface
@@ -389,12 +389,14 @@ void System::EstimateMotion_ransca_ceres()
         cout << "add residual time " << (t2-t1).toSec() << endl;  // 0.00168042
 
         ceres::Solver::Options options;
-        options.minimizer_progress_to_stdout = false;
+        options.minimizer_progress_to_stdout = true;
         options.num_threads = yaml_ceres_iter_thread;
         // options.logging_type = ceres::SILENT;
         options.linear_solver_type = ceres::SPARSE_SCHUR;
         options.use_nonmonotonic_steps = true;
         options.max_num_iterations = yaml_ceres_iter_num;
+        options.max_num_iterations = 10;
+
         // options.initial_trust_region_radius = 1;
         problem.SetParameterLowerBound(&trans_vel[0],0,-20);
         problem.SetParameterLowerBound(&trans_vel[0],1,-20);
@@ -435,7 +437,7 @@ void System::EstimateMotion_ransca_ceres()
         if(show_time_info)
             cout << "ceres time " << (t2-t1).toSec() << endl;  // 0.00383356 
         
-        // cout << summary.BriefReport() << endl;
+        cout << summary.BriefReport() << endl;
 
         // cout << "   iter " << iter_ << ", ceres iters " << summary.iterations.size()<< endl;
         // if(summary.BriefReport().find("NO_CONVERGENCE") != std::string::npos)

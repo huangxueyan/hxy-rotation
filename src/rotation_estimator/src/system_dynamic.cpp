@@ -617,6 +617,8 @@ void System::Run()
             t2 = ros::Time::now();
             total_evaluate_time += (t2 - t1).toSec();
             yaml_iter_num = temp_iter; // 再恢复过来 原本的迭代次数
+            
+            total_processing_events += eventBundle.size;
 
             save_velocity();
             if (merge_ratio > last_merge_ratio_) {
@@ -638,6 +640,7 @@ void System::Run()
             // t_threshold_ = eventBundle.time_delta.tail(0).value();
             vec_vec_eventData_iter++;
             undistortEvents();
+            // EstimateMotion_ransca_ceres();
         } else {
             last_merge_ratio_ = merge_ratio;
             valid_merge_count++;
@@ -673,6 +676,14 @@ void System::save_velocity()
 
     // WARNING, you should use ros timestamps not double (cout for double is 6 valid numbers)
     // est_velocity_file << seq_count++ <<" " << eventBundle.first_tstamp << " " << eventBundle.last_tstamp << " " << euler_position.transpose() << endl;
+
+    fstream warped_event_file = fstream("/home/hxy/Desktop/ECCV22-all/hxy-rotation/warped_events.txt", ios::out);
+    for (int i = 0; i < event_warpped_Bundle.size; i++) {
+        warped_event_file << event_warpped_Bundle.coord.col(i)[0] << " " << event_warpped_Bundle.coord.col(i)[1] << " " << event_warpped_Bundle.time_delta << endl;
+    }
+    warped_event_file.close();
+    exit(0);
+    cout << "close success" << endl;
 
     // est_velocity_file << seq_count++ <<" " << eventBundle.first_tstamp << " " << eventBundle.last_tstamp << " " << est_angleAxis.transpose() << endl;
     est_velocity_file << seq_count++ << " "

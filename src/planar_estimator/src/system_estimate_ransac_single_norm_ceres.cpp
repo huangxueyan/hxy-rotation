@@ -142,7 +142,7 @@ struct ResidualCostFunction
   \param [ts_start, ts_end]: time_range to form timesurface template  
   \param sample_num: the sample count beyond the time_range  
 */
-void System::EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_end, int sample_num, int total_iter_num)
+void System::EstimateMotion_ransca_ceres(double ts_start, double ts_end, int sample_num, int total_iter_num)
 {
     cout <<seq_count<< " time "<< eventBundle.first_tstamp.toSec() <<  ", total "
             << eventBundle.size << ", duration " << (eventBundle.last_tstamp - eventBundle.first_tstamp).toSec() 
@@ -208,6 +208,7 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_e
             // linear add TODO improve to module 
                 cv_earlier_timesurface.at<float>(sampled_y, sampled_x) = eventBundle.time_delta(i);  
         } 
+        cv_early_timesurface_float_ = cv_earlier_timesurface.clone();
 
         // get t1 time surface of warpped image
         // getWarpedEventImage(eg_angleAxis,eg_trans_vel, eg_N_norm, event_warpped_Bundle, PlotOption::U16C1_EVNET_IMAGE, true);
@@ -302,7 +303,8 @@ void System::EstimateMotion_ransca_doublewarp_ceres(double ts_start, double ts_e
         ceres::Solver::Summary summary; 
 
         // evaluate: choose init velocity, test whether using last_est or {0,0,0},
-        if(iter_ == 1)
+        // if(iter_ == 1)
+        if(false)
         {
             double cost = 0;
             vector<double> residual_vec; 

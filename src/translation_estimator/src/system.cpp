@@ -457,10 +457,10 @@ void System::Run()
     // cout << "undistortEvents time " <<total_undistort_time<< ", " << (t2-t1).toSec() << endl;  // 0.00691187 s
 
     t1 = ros::Time::now();
-    // EstimateMotion_ransca_ceres(); // ours with double and single 
-    EstimateRunTime_CM();
+    EstimateMotion_ransca_ceres(); // ours with double and single 
+    // EstimateRunTime_CM();
     // EstimateRunTime_PPP();
-    EstimateMotion_ransca_ceres_evaluate(); // ours with double and single 
+    // EstimateMotion_ransca_ceres_evaluate(); // ours with double and single 
 
     // EstimateRunTime_Single();
     // EstimateRunTime_Double();
@@ -624,7 +624,7 @@ void System::visualize()
         // cv::imshow("curr_map_image", curr_map_image);
         // cv::imshow("hot_image_C3", hot_image_C3);
 
-        cv::waitKey(1);
+        cv::waitKey(0);
 }
 
 

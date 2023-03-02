@@ -230,6 +230,54 @@ void EventBundle::InverseProjection(Eigen::Matrix3d& K)
 }
 
 
+void EventBundle::Append(std::vector<dvs_msgs::Event>& vec_eventData, ros::Time first_tstamp_)
+{
+    if(size == 0) 
+    {
+        // cout << "first appending events, "<< vec_eventData.size() << endl;
+        first_tstamp = first_tstamp_;
+        // abs_tstamp = eventData.time_stamp;
+    }
+    else
+    {
+        cout << "appending events" << endl;
+    }
+    
+    last_tstamp = vec_eventData.back().ts;
+    
+    size_t old_size = size; 
+    size += vec_eventData.size(); 
+
+    coord.conservativeResize(2,size);
+    coord_3d.conservativeResize(3,size);
+    polar.conservativeResize(size);
+
+    time_delta.conservativeResize(size);
+    time_delta_rev.conservativeResize(size);  // not used 
+    
+    int counter = 0; 
+    for(int i=0; i<vec_eventData.size(); i++)
+    {
+        // TODO sampler 
+
+        // x.push_back(i.x);
+        // y.push_back(i.y);
+        polar(old_size+counter) = vec_eventData[i].polarity==0;
+
+        coord(0, old_size+counter) = vec_eventData[i].x;
+        coord(1, old_size+counter) = vec_eventData[i].y;
+
+        coord_3d(0,old_size+counter) = vec_eventData[i].x;
+        coord_3d(1,old_size+counter) = vec_eventData[i].y;
+        coord_3d(2,old_size+counter) = 1;
+        time_delta(old_size+counter) = (vec_eventData[i].ts - first_tstamp).toSec();
+        counter++;
+    }
+    // cout << coord_3d.topLeftCorner(3,5) << endl;
+
+}
+
+
 /**
 * \brief project camera to unisophere 
 * \param K, camera proj matrix. from coor_3d -> coor
@@ -267,6 +315,6 @@ void EventBundle::CopySize(const EventBundle& ref)
     coord.resize(2,size);
     coord_3d.resize(3,size);
     isInner.resize(size); 
-    
+    time_delta.resize(size);
 
 }

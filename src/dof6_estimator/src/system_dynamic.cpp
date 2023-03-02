@@ -14,17 +14,29 @@ System::System(const string& yaml)
         ROS_ERROR("counld not open file %s", yaml.c_str());
     }
 
+    string calib_dir = fSettings["calib_dir"];
+    camera = CameraPara(calib_dir);
+
     yaml_iter_num = fSettings["yaml_iter_num"];
     yaml_ts_start = fSettings["yaml_ts_start"];
     yaml_ts_end = fSettings["yaml_ts_end"];
     yaml_sample_count = fSettings["yaml_sample_count"];
-    yaml_ceres_iter_num = fSettings["yaml_ceres_iter_num"];
     yaml_ceres_iter_thread = fSettings["yaml_ceres_iter_thread"];
+    yaml_ceres_iter_num = fSettings["yaml_ceres_iter_num"];
     yaml_gaussian_size = fSettings["yaml_gaussian_size"];
     yaml_gaussian_size_sigma = fSettings["yaml_gaussian_size_sigma"];
     yaml_denoise_num = fSettings["yaml_denoise_num"];
     yaml_default_value_factor = fSettings["yaml_default_value_factor"];
-    yaml_regulization_factor = fSettings["yaml_regulization_factor"];
+
+    time_length_ = fSettings["yaml_time_length"]; 
+    batch_length_ = fSettings["yaml_batch_length"]; 
+    time_length_ /= float(1000); // convert to seconds
+    outlier_ratio_ = fSettings["yaml_outlier_ratio"];  
+    outlier_ratio_ /= float(100); // convert to float
+    
+    cout << "time_length_" << time_length_ << 
+        ", batch_length_ init " << batch_length_ << 
+        ", outlier_ratio_ init " << outlier_ratio_ << endl;
 
     // undistore data 
     undist_mesh_x, undist_mesh_y;  
@@ -35,9 +47,6 @@ System::System(const string& yaml)
     using_gt = false;
     vec_vec_eventData_iter = 0;
     seq_count = 1;
-
-    total_evaluate_time = 0;
-
 
     // ros msg 
     // vec_last_event_idx = 0;
@@ -54,7 +63,7 @@ System::System(const string& yaml)
     // cv::namedWindow("curr_warpped_event_image_gt", cv::WINDOW_NORMAL);
     // cv::namedWindow("curr_map_image", cv::WINDOW_NORMAL);
     //  cv::namedWindow("hot_image_C3", cv::WINDOW_NORMAL);
-     cv::namedWindow("timesurface_early", cv::WINDOW_NORMAL);
+    //  cv::namedWindow("timesurface_early", cv::WINDOW_NORMAL);
     //  cv::namedWindow("timesurface_later", cv::WINDOW_NORMAL);
     //  cv::namedWindow("opti", cv::WINDOW_NORMAL);
 
@@ -67,9 +76,9 @@ System::System(const string& yaml)
 
     // optimizeing 
     est_angleAxis = Eigen::Vector3d(0,0,0); // set to 0. 
-    int dims[] = {180,240,20};   // row, col, channels
-    cv_3D_surface_index = cv::Mat(3, dims, CV_32S);
-    cv_3D_surface_index_count = cv::Mat(180, 240, CV_32S);
+    // int dims[] = {180,240,20};   // row, col, channels            // useless
+    // cv_3D_surface_index = cv::Mat(3, dims, CV_32S);               // useless
+    // cv_3D_surface_index_count = cv::Mat(180, 240, CV_32S);        // useless
     
     // after processing 
     curr_undis_event_image = cv::Mat(camera.height,camera.width, CV_32F);
@@ -78,21 +87,23 @@ System::System(const string& yaml)
     curr_warpped_event_image_gt = cv::Mat(camera.height,camera.width, CV_32F); 
 
     // output file 
-    string output_dir = fSettings["output_dir"];
-    output_dir += "regular"+std::to_string(int(yaml_regulization_factor))+
-        "_"+std::to_string(yaml_sample_count) + 
-        "_timerange(0." + std::to_string(int(yaml_ts_start*10)) +"-0." +std::to_string(int(yaml_ts_end*10)) + ")"+
-        "_iter"+ std::to_string(yaml_iter_num) + "_ceres" + std::to_string(yaml_ceres_iter_num)+
-        "_gaussan" +std::to_string(yaml_gaussian_size) +"_sigma"+std::to_string(int(yaml_gaussian_size_sigma)) +"." +std::to_string(int(yaml_gaussian_size_sigma*10)%10)+
-        "_denoise" + std::to_string(yaml_denoise_num) + ".txt";
-        // "_defaultval" +std::to_string(int(yaml_default_value_factor)) +"." +std::to_string(int(yaml_default_value_factor*10)%10)+ ".txt";
-    cout << "open file " << output_dir << endl; 
+    output_dir = string(fSettings["output_dir"]);
+    string output_path = output_dir + std::to_string(yaml_sample_count) + "_outlier" + std::to_string(int(outlier_ratio_*100)) + "_batchtime" + std::to_string(int(time_length_*1000)) + "ms"+
+                  "_batchlength" + std::to_string(batch_length_) + "_timerange(0." + std::to_string(int(yaml_ts_start * 10)) + "-0." + std::to_string(int(yaml_ts_end * 10)) + ")" +
+                  "_iter" + std::to_string(yaml_iter_num) + "_ceres" + std::to_string(yaml_ceres_iter_num) +
+                  "_gaussan" + std::to_string(yaml_gaussian_size) + "_sigma" + std::to_string(int(yaml_gaussian_size_sigma)) + "." + std::to_string(int(yaml_gaussian_size_sigma * 10) % 10) +
+                  "_denoise" + std::to_string(yaml_denoise_num) +
+                  ".txt";
+    cout << "open file " << output_path << endl; 
 
-    if(!fstream(output_dir, ios::in).is_open())
+
+    if(!fstream(output_path, ios::in).is_open())
     {
         cout << "creating file " << endl;
-        est_velocity_file = fstream(output_dir, ios::out);
+        est_velocity_file = fstream(output_path, ios::out);
     }
+
+    // est_velocity_file_quat = fstream("/home/hxy/Desktop/hxy-rotation/data/evo_data/ransac_velocity.txt", ios::out);
 
 
     // thread in background 
@@ -100,14 +111,19 @@ System::System(const string& yaml)
     // thread_run = new thread(&System::Run, this);
 
 
-    // init value 
-    est_angleAxis.setZero();       // estimated anglar anxis from t2->t1.  = theta / delta_time 
-    est_trans_velocity.setZero();  // estimated anglar anxis from t2->t1, translation velocity, need mul by delta_time
-    // est_N_norm.setZero();          // estimated anglar anxis from t2->t1, translation velocity, need mul by delta_time
-    // last_est_N_norm.setZero();     // 正则项， 控制est_N_norm的大小
+    // init 
+    total_evaluate_time = 0;
+    total_visual_time = 0;
+    total_undistort_time = 0;
+    total_timesurface_time = 0;
+    total_ceres_time = 0;
+    total_eventbundle_time = 0;
+    total_readevents_time = 0;
+    total_warpevents_time = 0;
 
-    est_N_norm = Eigen::Vector3d(0.1,0.1,0.9);          // estimated anglar anxis from t2->t1, translation velocity, need mul by delta_time
-    last_est_N_norm = Eigen::Vector3d(0.1,0.1,0.9);     // 正则项， 控制est_N_norm的大小
+    est_angleAxis = Eigen::Vector3d(0.01,0.01,0.01);       // estimated anglar anxis from t2->t1.  = theta / delta_time 
+    est_trans_velocity = Eigen::Vector3d(0.01,0.01,0.01);  // estimated anglar anxis from t2->t1, translation velocity, need mul by delta_time
+    last_est_var << 0.01,0.01,0.01,0.01,0.01,0.01;
 
 }
 
@@ -133,32 +149,41 @@ void System::undistortEvents()
     // cout << "------unditort events num:" << point_size <<  endl;
     // cout << "------undisotrt eventBundle cols " << eventBundle.coord.rows() << "," << eventBundle.coord.cols()  <<  endl;
     
-    vector<cv::Point2f> raw_event_points(point_size), undis_event_points(point_size);
+    // vector<cv::Point2f> raw_event_points(point_size), undis_event_points(point_size);
 
-    for(size_t i=0; i<point_size; ++i)
-        raw_event_points[i] = cv::Point2f(eventBundle.coord(0,i),eventBundle.coord(1,i));
+    // for(size_t i=0; i<point_size; ++i)
+    //     raw_event_points[i] = cv::Point2f(eventBundle.coord(0,i),eventBundle.coord(1,i));
     
-    // gt data using gt
-        cv::undistortPoints(raw_event_points, undis_event_points, 
-                camera.cameraMatrix, camera.distCoeffs, cv::noArray(), camera.cameraMatrix);
-        
-        // (0,0,0,0)
-        // cv::Mat undis = (cv::Mat_<double>(1,4) << 0, 0, 0 ,0 );
+    // using gt camera param 
+    {
         // cv::undistortPoints(raw_event_points, undis_event_points, 
-        //         camera.cameraMatrix,undis , cv::noArray(), camera.cameraMatrix);
-    
+        //         camera.cameraMatrix, camera.distCoeffs, cv::noArray(), camera.cameraMatrix);
+    }
+        
+    // using (0,0,0,0)  camera param  
+    // {
+    //     cv::Mat undis = (cv::Mat_<double>(1,4) << 0, 0, 0 ,0 );
+    //     cv::undistortPoints(raw_event_points, undis_event_points, 
+    //             camera.cameraMatrix,undis , cv::noArray(), camera.cameraMatrix);
+    // }
     
     // convert points to cv_mat 
-    cv::Mat temp_mat = cv::Mat(undis_event_points); 
-    temp_mat = temp_mat.reshape(1,point_size); // channel 1, row = 2
-    cv::transpose(temp_mat, temp_mat);
+    // cv::Mat temp_mat = cv::Mat(undis_event_points); 
+    // temp_mat = temp_mat.reshape(1,point_size); // channel 1, row = 2
+    // cv::transpose(temp_mat, temp_mat);
     
-    // convert cv2eigen 
+    // // convert cv2eigen 
+    // event_undis_Bundle.CopySize(eventBundle); 
+    // cv::cv2eigen(temp_mat, event_undis_Bundle.coord); 
+    
+
     event_undis_Bundle.CopySize(eventBundle); 
-    cv::cv2eigen(temp_mat, event_undis_Bundle.coord); 
-    
+    event_undis_Bundle.coord = eventBundle.coord;
     // store 3d data
-    event_undis_Bundle.InverseProjection(camera.eg_cameraMatrix); 
+    // cout << event_undis_Bundle.coord.topLeftCorner(2,5) << endl;
+
+    event_undis_Bundle.InverseProjection(camera.eg_cameraMatrix, eventBundle.coord_3d);  
+    // event_undis_Bundle.coord_3d = eventBundle.coord_3d;
     
     // store inner 
     event_undis_Bundle.DiscriminateInner(camera.width, camera.height);
@@ -214,9 +239,10 @@ cv::Mat System::getImageFromBundle(EventBundle& cur_event_bundle, const PlotOpti
             if(cur_event_bundle.isInner(i) < 1)
                 continue;
 
-            if(x >= width  ||  x < 0 || y >= height|| y < 0 ) 
+            if(x >= width  ||  x < 0 || y >= height|| y < 0 ) {
                 cout << "x, y" << x << "," << y << endl;
-        
+                continue;
+            }
             // cout << "x, y" << x << "," << y << endl;
 
             cv::Point2i point_temp(x,y);
@@ -239,8 +265,8 @@ cv::Mat System::getImageFromBundle(EventBundle& cur_event_bundle, const PlotOpti
 
             if(cur_event_bundle.isInner(i) < 1) continue;
 
-            // if(x >= width  ||  x < 0 || y >= height || y < 0 ) 
-            //     cout << "x, y" << x << "," << y << endl;
+            if(x >= width  ||  x < 0 || y >= height || y < 0 ) 
+                cout << "x, y" << x << "," << y << endl;
 
             cv::Point2i point_temp(x,y);
             image.at<unsigned short>(point_temp) += 1;
@@ -394,78 +420,185 @@ Eigen::Matrix3d System::get_local_rotation_b2f(bool inverse)
 */
 void System::Run()
 {
-    
-    /* update eventBundle */ 
-    eventBundle.Append(vec_vec_eventData[vec_vec_eventData_iter]);      
-    vec_vec_eventData_iter++;
+    ros::Time t1, t2;
 
-    // check current eventsize or event interval 
-    double time_interval = (eventBundle.last_tstamp-eventBundle.first_tstamp).toSec();
-    if(time_interval < 0.002 || eventBundle.size < 3000)
-    {
-        cout << "no enough interval or num: " <<time_interval << ", "<< eventBundle.size << endl;
-        return; 
-    }
-
-
-    // cout << "----processing event bundle------ size: " <<eventBundle.size  << 
-        // ", vec leave:" <<vec_vec_eventData.size() - vec_vec_eventData_iter << endl; 
-
-    /* undistort events */ 
-    ros::Time t1 = ros::Time::now();  // TODO undistort 
-    undistortEvents();
-    ros::Time t2 = ros::Time::now();
-    // cout << "undistort time " << (t2-t1).toSec() << endl;  // 0.00691187 s
-
-    /* get local bundle sharper using self derived iteration CM method */ 
-    // est_angleAxis = Eigen::Vector3d(2.0840802, 2.6272788, 4.7796245); // set to 0. 
-    // EstimateMotion_kim();
-
-    // est_angleAxis = Eigen::Vector3d(0.1,0,0); // set to 0. 
-    // EstimateMotion_CM_ceres();
-
-    /* get local bundle sharper using time residual, all warp to t0 */
-    // if(vec_vec_eventData_iter == 1)
+    // check current eventsize or event interval
+    // double time_interval = (vec_vec_eventData[vec_vec_eventData_iter].back().ts - vec_vec_eventData[vec_vec_eventData_iter].front().ts).toSec();
+    // if (time_interval < 0.0001 || vec_vec_eventData[vec_vec_eventData_iter].size() < 3000)
     // {
-    //     cout << "init using self_boost" << endl;
-    //     est_angleAxis = Eigen::Vector3d(0,0,0); // set to 0. 
-    //     EstimateMotion_ransca_doublewarp_ceres(0, 0.99);
-    //     store_subpixel_template(est_angleAxis);  // TODO 
+    //     // 确保有足够的基础数 得到可靠的速度，然后再判断重叠率 
+    //     cout << "no enough interval or num: " << time_interval << ", " << vec_vec_eventData[vec_vec_eventData_iter].size() << endl;
+    //     eventBundle.Clear();
+    //     vec_vec_eventData_iter++;
+    //     return;
     // }
-    // else{
-    //     cout << "using previous template " << endl;
-    //     EstimateMotion_ransca_samples_ceres(0, 0.99);
-    //     store_subpixel_template(est_angleAxis);     
-    // }
-    // 
-    // est_angleAxis = Eigen::Vector3d(0,0,0); // set to 0. 
-    // est_angleAxis = Eigen::Vector3d(1.576866857643363, 1.7536166842524228, -1.677515728118435); // set to gt. 
-    
-    t1 = ros::Time::now();
-    EstimateMotion_ransca_ceres(yaml_ts_start, yaml_ts_end, yaml_sample_count, yaml_iter_num);
-    // EstimateMotion_ransca_samples_ceres(0.2, 1);
-    t2 = ros::Time::now();
-    cout << "   batch time " << (t2-t1).toSec() << endl;  // 0.00691187 s
-    cout << "-----------------------" << endl;
-    total_evaluate_time += (t2-t1).toSec();
 
+    if (eventBundle.size < int(20e3) || eventBundle.time_delta.tail(1).value() < 0.01)
+    {
+        // 执行正常的一个流程 预计是1w
+        /* update eventBundle */
+        t1 = ros::Time::now();
+        eventBundle.Append(vec_vec_eventData[vec_vec_eventData_iter], vec_vec_eventDepth[vec_vec_eventData_iter]);
+        vec_vec_eventData_iter++;
+        t2 = ros::Time::now();
+        total_eventbundle_time += (t2 - t1).toSec();
+        // cout << "----processing event bundle------ size: " <<eventBundle.size  <<
+        // ", vec leave:" <<vec_vec_eventData.size() - vec_vec_eventData_iter << endl;
+        last_merge_ratio_ = outlier_ratio_;
+        // est_angleAxis.setZero();
+        cout << "no enough interval or num: " << eventBundle.time_delta.tail(1) << ", " << eventBundle.size << endl;
+    }
+    else {
+        /* undistort events */
+        t1 = ros::Time::now();
+        undistortEvents();
+        t2 = ros::Time::now();
+        total_undistort_time += (t2 - t1).toSec();
+        // cout << "undistortEvents time " <<total_undistort_time<< ", " << (t2-t1).toSec() << endl;  // 0.00691187 s
 
-    // save gt date 
-    save_velocity();
+        // 初始化eventbundle里面的速度 保证里面一定有1w个事件
+        t1 = ros::Time::now();
+        EstimateMotion_ransca_ceres(yaml_ts_start, yaml_ts_end, yaml_sample_count, yaml_iter_num);
+        t2 = ros::Time::now();
+        total_evaluate_time += (t2 - t1).toSec();
+        // cout << "EstimateMotion_ransca_ceres time " <<total_evaluate_time<< ", " << (t2-t1).toSec() << endl;  // 0.00691187 s
+        
+        // t_threshold_ = eventBundle.time_delta.tail(0).value();
 
-    /* get global maps */ 
-    // getMapImage();
+        // 测试 下一个batch是否在界内
+        EventBundle latest_bundle, undis_latest_bundle;
+        latest_bundle.Append(vec_vec_eventData[vec_vec_eventData_iter], vec_vec_eventDepth[vec_vec_eventData_iter], eventBundle.first_tstamp);
+        undistortEvents(latest_bundle, undis_latest_bundle);
 
-    // visualize 
-    visualize(); 
+        double merge_ratio = GetInsideRatioSingle(undis_latest_bundle);
+        // double merge_ratio = GetInsideRatioDouble(undis_latest_bundle);
 
-    // clear event bundle 
-    // que_vec_eventData.pop();
-    eventBundle.Clear();
-    // cout << "-------sucess run thread -------" << endl;
+        double cur_time_length = eventBundle.time_delta.tail(1).value();
+        if (merge_ratio > 1.1 * last_merge_ratio_ || cur_time_length > time_length_ || eventBundle.size/1000 > batch_length_)
+        {
 
+            // finetune 不在界内，匀速假设不成立，则保留当前batch值，iter位置不变
+            // int temp_iter = yaml_iter_num;
+            // yaml_iter_num = yaml_iter_num_final;
+            // t1 = ros::Time::now();
+            // EstimateMotion_ransca_ceres(yaml_ts_start, yaml_ts_end, yaml_sample_count, yaml_iter_num);
+            // t2 = ros::Time::now();
+            // total_evaluate_time += (t2 - t1).toSec();
+            // yaml_iter_num = temp_iter; // 再恢复过来 原本的迭代次数
+            
+            total_processing_events += eventBundle.size;
+
+            save_velocity();
+            if (merge_ratio > last_merge_ratio_) {
+                invalid_merge_count++;
+                cout << "匀速假设不成立, outiler上升，当前 size " << eventBundle.size / 1000 << "k" << ", merge_ratio " << merge_ratio << ", time " << cur_time_length << endl;
+            } else if (eventBundle.size / 1000 > batch_length_) {
+                invalid_batch_count++;
+                cout << "匀速假设不成立, eventBundle太大 size " << eventBundle.size / 1000 << "k" << ", batch_length_ " << batch_length_ << ", time " << cur_time_length << endl;
+            }
+            else {
+                cout << "匀速假设不成立, 超时，当前 size " << eventBundle.size / 1000 << "k" << ", merge_ratio " << merge_ratio << ", time " << cur_time_length << endl;
+                invalid_time_count++;
+            }
+            eventBundle.Clear();
+            last_merge_ratio_ = outlier_ratio_;
+
+            // 界内界外共享这段函数，开始merge，并更新速度
+            eventBundle.Append(vec_vec_eventData[vec_vec_eventData_iter], vec_vec_eventDepth[vec_vec_eventData_iter]);
+            // t_threshold_ = eventBundle.time_delta.tail(0).value();
+            vec_vec_eventData_iter++;
+            undistortEvents();
+            // EstimateMotion_ransca_ceres();
+        } else {
+            last_merge_ratio_ = merge_ratio;
+            valid_merge_count++;
+            cout << "merge, 匀速假设成立, 当前 size " << eventBundle.size / 1000 << "k" << ", merge_ratio " << merge_ratio << ", time " << cur_time_length << endl;
+   
+            // 界内界外共享这段函数，开始merge，并更新速度 这时最低就有1.5w了
+            eventBundle.Append(vec_vec_eventData[vec_vec_eventData_iter],  vec_vec_eventDepth[vec_vec_eventData_iter]);
+            vec_vec_eventData_iter++;
+            undistortEvents();
+            t1 = ros::Time::now();
+            EstimateMotion_ransca_ceres(yaml_ts_start, yaml_ts_end, yaml_sample_count, yaml_iter_num);
+            t2 = ros::Time::now();
+            total_evaluate_time += (t2 - t1).toSec();
+       }        
+    }
+    visualize();
+    cout << "invalid_merge_count " << invalid_merge_count << ", invalid time count " << invalid_time_count << 
+        ", invalid batch count " << invalid_batch_count << ", valid merge count " << valid_merge_count << endl;
 }
 
+void System::undistortEvents(EventBundle &ebin, EventBundle &ebout) {
+    ebout.CopySize(eventBundle); 
+    ebout.coord = eventBundle.coord;
+    ebout.time_delta = eventBundle.time_delta;
+    // store 3d data
+    // cout << event_undis_Bundle.coord.topLeftCorner(2,5) << endl;
+
+    ebout.InverseProjection(camera.eg_cameraMatrix, eventBundle.coord_3d);  
+    // event_undis_Bundle.coord_3d = eventBundle.coord_3d;
+    
+    // store inner 
+    ebout.DiscriminateInner(camera.width, camera.height);
+}
+
+double System::GetInsideRatioSingle(EventBundle &evin)
+{
+    assert(!cv_early_timesurface_float_.empty());
+    Eigen::Vector3d cur_ang_vel = est_angleAxis;
+    Eigen::Vector3d cur_trans_vel = est_trans_velocity;
+    EventBundle my_warpped_Bundle;
+    // getWarpedEvent(evin, est_angleAxis, my_warpped_Bundle);
+    getWarpedEventPoints(evin, my_warpped_Bundle, cur_ang_vel, cur_trans_vel, -1, false); 
+    my_warpped_Bundle.Projection(camera.eg_cameraMatrix);
+    my_warpped_Bundle.DiscriminateInner(camera.width, camera.height);
+    // add more residual s
+
+    cv::Mat temp_img(camera.height, camera.width, CV_8U);
+    temp_img.setTo(0);
+    
+    int outlier = 0, outlier_bound = 0, outlier_time = 0;
+    for (int loop_temp = 0; loop_temp < evin.size; loop_temp++)
+    {
+        int idx = loop_temp;
+        int sampled_x = std::round(my_warpped_Bundle.coord.col(idx)[0]);
+        int sampled_y = std::round(my_warpped_Bundle.coord.col(idx)[1]);
+        if (my_warpped_Bundle.isInner[idx] < 1) // outlier
+            outlier_bound++;
+        else
+        {
+            // if (cv_earlier_timesurface_mask_.at<u_char>(sampled_y, sampled_x) == 0)
+            //     outlier_time++;
+            int count = 0;
+            for (int j = -1; j < 2; j++)
+                for (int k = -1; k < 2; k++)
+                    count += (cv_early_timesurface_float_.at<float>(sampled_y + j, sampled_x + k) < eventBundle.time_delta(eventBundle.size / 2));
+                    // count += (cv_earlier_timesurface_float_.at<float>(sampled_y + j, sampled_x + k) < t_threshold_);
+            
+            // if (count > 0)
+            //     temp_img.at<u_char>(sampled_y, sampled_x) = 255;
+            
+            if (count < 1) 
+                outlier_time++;
+        }
+
+        outlier = outlier_bound + outlier_time;
+        // if (loop_temp % 3000 == 0)
+        // {
+        //     double ratio = 100 * outlier_time / float(evin.time_delta.size());
+        //     cout << "0-" << loop_temp / float(evin.time_delta.size()) << " sample, " << evin.time_delta.size() << ", outlier bound " << outlier_bound << ", ourlier time " << outlier_time << ", outlier_time rate " << ratio << "%" << endl;
+        // }
+    }
+
+    double ratio = outlier / float(evin.time_delta.size());
+    cout << "0-1 sample " << evin.time_delta.size() << ", outlier " << outlier << ", rate " << ratio*100 << "%" << endl;
+
+
+    // cv::imshow("tempimg", temp_img);
+    // cv::waitKey(10);
+    return ratio;
+}
 
 
 /**
@@ -484,13 +617,10 @@ void System::save_velocity()
     
     // WARNING, you should use ros timestamps not double (cout for double is 6 valid numbers)
     // est_velocity_file << seq_count++ <<" " << eventBundle.first_tstamp << " " << eventBundle.last_tstamp << " " << euler_position.transpose() << endl;
-    double costha = cos(est_N_norm(0)), sintha = sin(est_N_norm(0));
-    double cosphi = cos(est_N_norm(1)), sinphi = sin(est_N_norm(1));
-    Eigen::Vector3d N_norm_cos = {costha*sinphi, sintha*sinphi, cosphi};
 
     est_velocity_file << seq_count++ <<" " << eventBundle.first_tstamp << " " << 
-                        eventBundle.last_tstamp << " " << -est_angleAxis.transpose() << " " <<
-                        -est_trans_velocity.transpose() << " " << N_norm_cos.transpose() <<  endl;
+                        eventBundle.last_tstamp << " " << est_angleAxis.transpose() << " " <<
+                        est_trans_velocity.transpose() << " " << eventBundle.size << " " << eventBundle.size << endl;
 
 }
 
@@ -503,6 +633,15 @@ void System::pushEventData(const std::vector<dvs_msgs::Event>& ros_vec_event)
     vec_vec_eventData.push_back(ros_vec_event);
     // cout << " to vec_vec_eventData " << endl;  
     
+    Run(); 
+}
+
+void System::pushEventData(const std::vector<dvs_msgs::Event>& ros_vec_event, const std::vector<double>& vec_depth)
+{
+    // que_vec_eventData.push(ros_vec_event); 
+    vec_vec_eventData.push_back(ros_vec_event);
+    // cout << " to vec_vec_eventData " << endl;  
+    vec_vec_eventDepth.push_back(vec_depth);
     Run(); 
 }
 
@@ -612,11 +751,19 @@ void System::visualize()
         // getWarpedEventImage(est_angleAxis, event_warpped_Bundle).convertTo(curr_warpped_event_image, CV_32FC3);
         cv::imshow("curr_warpped_event_image", curr_warpped_event_image);
         // cv::imshow("curr_warpped_event_image_gt", curr_warpped_event_image_gt);
-
         // cv::imshow("curr_map_image", curr_map_image);
         // cv::imshow("hot_image_C3", hot_image_C3);
 
-        cv::waitKey(10);
+        // output data
+        // cv::normalize(curr_undis_event_image, curr_undis_event_image, 0,255, cv::NORM_MINMAX, CV_8U);
+        // cv::normalize(curr_warpped_event_image, curr_warpped_event_image, 0,255, cv::NORM_MINMAX, CV_8U);
+        // cv::threshold(curr_warpped_event_image, curr_warpped_event_image, 0.1, 255, CV_8U);
+        // cv::threshold(curr_undis_event_image, curr_undis_event_image, 0.1, 255, CV_8U);
+        // cv::imwrite(output_dir + std::to_string(seq_count) + "_undis.png", curr_undis_event_image);
+        // cv::imwrite(output_dir + std::to_string(seq_count) + "_warp.png", curr_warpped_event_image);
+        
+
+        cv::waitKey(1);
 }
 
 

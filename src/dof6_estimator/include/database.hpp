@@ -89,6 +89,8 @@ struct EventBundle{
     // core opearte
     void Append(std::vector<dvs_msgs::Event>& vec_eventData);
     void Append(std::vector<dvs_msgs::Event>& vec_eventData, std::vector<double>& vec_eventDepth);
+    void Append(std::vector<dvs_msgs::Event>& vec_eventData, std::vector<double>& vec_eventDepth, ros::Time first_tstamp_);
+    
     void CopySize(const EventBundle& eb); 
 
     void Clear(); 

@@ -632,15 +632,16 @@ void System::visualize()
         // cv::imshow("curr_map_image", curr_map_image);
         // cv::imshow("hot_image_C3", hot_image_C3);
 
-        cv::normalize(curr_undis_event_image, curr_undis_event_image, 0,255, cv::NORM_MINMAX, CV_8U);
-        cv::normalize(curr_warpped_event_image, curr_warpped_event_image, 0,255, cv::NORM_MINMAX, CV_8U);
-        cv::threshold(curr_warpped_event_image, curr_warpped_event_image, 0.1, 255, CV_8U);
-        cv::threshold(curr_undis_event_image, curr_undis_event_image, 0.1, 255, CV_8U);
-        cv::imwrite(output_dir + std::to_string(seq_count) + "_undis.png", curr_undis_event_image);
-        cv::imwrite(output_dir + std::to_string(seq_count) + "_warp.png", curr_warpped_event_image);
+        // output data
+        // cv::normalize(curr_undis_event_image, curr_undis_event_image, 0,255, cv::NORM_MINMAX, CV_8U);
+        // cv::normalize(curr_warpped_event_image, curr_warpped_event_image, 0,255, cv::NORM_MINMAX, CV_8U);
+        // cv::threshold(curr_warpped_event_image, curr_warpped_event_image, 0.1, 255, CV_8U);
+        // cv::threshold(curr_undis_event_image, curr_undis_event_image, 0.1, 255, CV_8U);
+        // cv::imwrite(output_dir + std::to_string(seq_count) + "_undis.png", curr_undis_event_image);
+        // cv::imwrite(output_dir + std::to_string(seq_count) + "_warp.png", curr_warpped_event_image);
         
 
-        cv::waitKey(10);
+        cv::waitKey(1);
 }
 
 

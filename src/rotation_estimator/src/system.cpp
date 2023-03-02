@@ -509,6 +509,12 @@ void System::save_velocity()
     // WARNING, you should use ros timestamps not double (cout for double is 6 valid numbers)
     // est_velocity_file << seq_count++ <<" " << eventBundle.first_tstamp << " " << eventBundle.last_tstamp << " " << euler_position.transpose() << endl;
 
+    fstream warped_event_file = fstream("/home/hxy/Desktop/ECCV22-all/hxy-rotation/warped_events.txt", ios::out);
+    for (int i = 0; i < event_warpped_Bundle.size; i++) {
+        warped_event_file << event_warpped_Bundle.coord.col(i)[0] << " " << event_warpped_Bundle.coord.col(i)[1] << " " << event_warpped_Bundle.time_delta << endl;
+    }
+    warped_event_file.close();
+
     // est_velocity_file << seq_count++ <<" " << eventBundle.first_tstamp << " " << eventBundle.last_tstamp << " " << est_angleAxis.transpose() << endl;
     est_velocity_file << seq_count++ << " "
                       << eventBundle.first_tstamp.toSec() - yaml_ros_starttime << " "
@@ -524,8 +530,6 @@ void System::pushEventData(const std::vector<dvs_msgs::Event> &ros_vec_event)
     ros::Time t1 = ros::Time::now();
     vec_vec_eventData.push_back(ros_vec_event);
     // cout << " to vec_vec_eventData " << endl;
-
-    cout << "ros_vec_event size " << ros_vec_event.size() << ", t" << ros_vec_event[0].ts << ", " << ros_vec_event.back().ts << endl;
 
     total_readevents_time += (ros::Time::now() - t1).toSec();
 

@@ -62,6 +62,7 @@ public:
 // imgproc
     void Run();
     void undistortEvents();
+    void undistortEvents(EventBundle &ebin, EventBundle &ebout);
     cv::Mat getWarpedEventImage(const Eigen::Vector3d & temp_ang_vel, const Eigen::Vector3d& cur_trans_vel, EventBundle& event_out,
         const PlotOption& option = PlotOption::U16C3_EVNET_IMAGE_COLOR, bool ref_t1 = false); 
 
@@ -70,6 +71,17 @@ public:
     cv::Mat getImageFromBundle(EventBundle& eventBundle,
         const PlotOption option = PlotOption::U16C3_EVNET_IMAGE_COLOR, bool is_mapping=false);
 
+    double GetInsideRatioSingle(EventBundle& evin);
+    cv::Mat cv_early_timesurface_float_;
+    int invalid_merge_count = 0;
+    int invalid_time_count = 0;
+    int invalid_batch_count = 0;
+    int valid_merge_count = 0;
+    double last_merge_ratio_;
+    double outlier_ratio_;
+    int yaml_iter_num_final;
+    double time_length_;
+    int batch_length_;
     // void getMapImage(); 
 
 // optimize
@@ -108,11 +120,23 @@ public:
 // file 
     bool inline file_opened() {return est_velocity_file.is_open();};
 
+
+    double total_evaluate_time, 
+            total_undistort_time, 
+            total_visual_time, 
+            total_timesurface_time, 
+            total_ceres_time, 
+            total_readevents_time, 
+            total_eventbundle_time, 
+            total_warpevents_time;
+    int total_processing_events = 0;
+
+
 // thread
     // thread* thread_run;
     // thread* thread_view;
     // std::mutex que_vec_eventData_mutex;
-    double total_evaluate_time;
+    // double total_evaluate_time;
 
 
 private:

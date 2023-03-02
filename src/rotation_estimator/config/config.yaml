@@ -19,20 +19,20 @@ Version: 1.0
 #--------------------------------------------------------------------------------------------
 # groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/poster_rotation/events.txt"
 # groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/dynamic_rotation/events.txt"
-# groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/boxes_rotation/events.txt"
-groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/shapes_rotation/events.txt"
-# output_dir: "/home/hxy/Desktop/ECCV22-all/hxy-rotation/data/rotation_estimation/poster_rotation/221106_RT2_deltat_0.015_single_warp_"
-# output_dir: "/home/hxy/Desktop/ECCV22-all/hxy-rotation/data/rotation_estimation/dynamic_rotation/221106_RT_deltat_0.015_single_warp_"
-# output_dir: "/home/hxy/Desktop/ECCV22-all/hxy-rotation/data/rotation_estimation/boxes_rotation/221106_baset0.01_final5_resetzero_dynasize5k_double_warp_"
-output_dir: "/home/hxy/Desktop/ECCV22-all/hxy-rotation/data/rotation_estimation/shapes_rotation/221108_baset0.01_final5_resetzero_dynasize5k_double_warp_"
+groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/boxes_rotation/events.txt"
+# groundtruth_dir: "/home/hxy/Documents/rosbag/Mono-unzip/shapes_rotation/events.txt"
+# output_dir: "/home/hxy/Desktop/ECCV22-all/hxy-rotation/data/rotation_estimation/poster_rotation/221116_baset0.01_final0_resetzero_dynasize5k_double_warp_"
+# output_dir: "/home/hxy/Desktop/ECCV22-all/hxy-rotation/data/rotation_estimation/dynamic_rotation/221116_baset0.01_resetzero_dynasize5k_double_warp_"
+output_dir: "/home/hxy/Desktop/ECCV22-all/hxy-rotation/data/rotation_estimation/boxes_rotation/temp_"
+# output_dir: "/home/hxy/Desktop/ECCV22-all/hxy-rotation/data/rotation_estimation/shapes_rotation/221116_baset0.01_final1_resetzero_dynasize5k_double_warp_"
 
 # DVS_MOTION
 # groundtruth_dir: "/home/hxy/Documents/rosbag/DVSMOTION20/Camera_Motion_Data_Mat/checkerboard_sequence/events.txt"
-# output_dir: "/home/hxy/Desktop/ECCV22-all/hxy-rotation/data/rotation_estimation/checkerboard_sequence/221106_baset0.01_final5_resetzero_dynasize5k_double_warp_"
+# output_dir: "/home/hxy/Desktop/ECCV22-all/hxy-rotation/data/rotation_estimation/checkerboard_sequence/221116_baset0.01_final5_resetzero_dynasize5k_double_warp_"
 # groundtruth_dir: "/home/hxy/Documents/rosbag/DVSMOTION20/Camera_Motion_Data_Mat/classroom_sequence/events.txt"
-# output_dir: "/home/hxy/Desktop/ECCV22-all/hxy-rotation/data/rotation_estimation/classroom_sequence/221106_RT_deltat_0.015_single_warp_"
+# output_dir: "/home/hxy/Desktop/ECCV22-all/hxy-rotation/data/rotation_estimation/classroom_sequence/221116_RT_deltat_0.015_single_warp_"
 # groundtruth_dir: "/home/hxy/Documents/rosbag/DVSMOTION20/Camera_Motion_Data_Mat/conference_sequence/events.txt"
-# output_dir: "/home/hxy/Desktop/ECCV22-all/hxy-rotation/data/rotation_estimation/conference_sequence/221106_baset0.01_final5_resetzero_dynasize5k_double_warp_"
+# output_dir: "/home/hxy/Desktop/ECCV22-all/hxy-rotation/data/rotation_estimation/conference_sequence/221116_baset0.01_final5_resetzero_dynasize5k_double_warp_"
  
 # 注意改数据集代码需要更改 内参
 # 改double double需要更改 GetInsideRatiodouble版本
@@ -53,7 +53,7 @@ yaml_ros_starttime: 0
 # 5.7e6~5.9e6 for shapes 
 # you can use 
 read_start_lines: 0e4
-read_max_lines: 25000e4
+read_max_lines: 100e4
 # read_start_lines: 1300e4
 # read_max_lines: 1600e4
 

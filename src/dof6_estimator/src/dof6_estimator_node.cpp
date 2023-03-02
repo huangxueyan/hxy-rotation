@@ -45,7 +45,7 @@ int main(int argc, char** argv)
     // ros::spin();
     
     /** Event TXT version */ 
-    // ros::Time t1 = ros::Time::now(); 
+    ros::Time t1 = ros::Time::now(); 
     Event_reader event_reader(yaml); 
     while (true)
     {
@@ -64,9 +64,18 @@ int main(int argc, char** argv)
         // cout << "success reveive" << endl;
         // break;
     }
-    // ros::Time t2 = ros::Time::now(); 
-    cout << "total optimize time " << sys->total_evaluate_time << endl;
-
+    ros::Time t2 = ros::Time::now();
+    double total_program_runtime = (ros::Time::now() - t1).toSec(); 
+    cout << " total program time "<< total_program_runtime << endl; 
+    cout << " total create event bundle time "<< sys->total_eventbundle_time << endl;
+    cout << " total evaluate time "<< sys->total_evaluate_time << endl;
+    cout << " total warpevents time "<< sys->total_warpevents_time << endl; 
+    cout << " total timesurface time "<< sys->total_timesurface_time << endl; 
+    cout << " total ceres time "<< sys->total_ceres_time << endl;
+    cout << " total undistort time "<< sys->total_undistort_time << endl;
+    cout << " total visual time "<< sys->total_visual_time << endl;
+    cout << " total processsing events " << sys->total_processing_events / float(1e6) << " M evs" << endl;
+    
     cout << "shutdown rotation estimator" << endl;
     return 0;
 }
